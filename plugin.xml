@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.views">
+      <category
+            name="css-analyser"
+            id="css-analyser">
+      </category>
+      <view
+            name="Duplication"
+            icon="icons/sample.gif"
+            category="css-analyser"
+            class="ca.concordia.cssanalyser.plugin.views.DuplicationRefactoringView"
+            id="ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView">
+      </view>
+   </extension>
+   <extension
+         point="org.eclipse.ui.perspectiveExtensions">
+      <perspectiveExtension
+            targetID="org.eclipse.jdt.ui.JavaPerspective">
+         <view
+               ratio="0.5"
+               relative="org.eclipse.ui.views.ProblemView"
+               relationship="right"
+               id="ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView">
+         </view>
+      </perspectiveExtension>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="ca.concordia.cssanalyser.plugin.annotations.DuplicatedDeclarations"
+            colorPreferenceKey="duplicatedDeclarations_color"
+            colorPreferenceValue="100,255,190"
+            contributesToHeader="false"
+            highlightPreferenceKey="duplicatedDeclarations_highlight"
+            highlightPreferenceValue="true"
+            includeOnPreferencePage="true"
+            isGoToNextNavigationTarget="true"
+            isGoToNextNavigationTargetKey="duplicatedDeclarations_nextNavigationTarget"
+            isGoToPreviousNavigationTarget="true"
+            isGoToPreviousNavigationTargetKey="duplicatedDeclarations_previousNavigationTarget"
+            label="Duplicated Declarations"
+            overviewRulerPreferenceKey="duplicatedDeclarations_overviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="0"
+            showInNextPrevDropdownToolbarAction="true"
+            showInNextPrevDropdownToolbarActionKey="duplicatedDeclarations_nextPrevDropdownToolbar"
+            textPreferenceKey="duplicatedDeclarations_text"
+            textPreferenceValue="true"
+            textStylePreferenceKey="duplicatedDeclarations_stylePreferences"
+            textStylePreferenceValue="BOX"
+            verticalRulerPreferenceKey="duplicatedDeclarations_verticalRuler"
+            verticalRulerPreferenceValue="false">
+      </specification>
+   </extension>
+	<extension point="org.eclipse.core.expressions.definitions">
+      <definition id="org.eclipse.ui.example.styleSheetFile">
+         <iterate ifEmpty="false">
+            <adapt type="org.eclipse.core.resources.IFile">
+               <test property="org.eclipse.core.resources.name" 
+                     value="*.css"/>
+               <!--test property="org.eclipse.core.resources.contentTypeId"
+                     value="org.eclipse.ant.core.antBuildFile"/-->
+            </adapt>
+         </iterate>
+      </definition>
+   </extension>
+   <extension point="org.eclipse.ui.menus">
+      <menuContribution locationURI="popup:org.eclipse.ui.popup.any">
+         <menu
+               label="css-analyser">
+            <command
+                  commandId="ca.concordia.cssanalyser.plugin.commands.OpenDuplicatedDeclarationsView"
+                  id="OpenDuplicatedDeclarationsView"
+                  label="Duplications"
+                  style="push">
+               <visibleWhen
+                     checkEnabled="false">
+                  <or>
+                     <with
+                           variable="activeMenuSelection">
+                        <reference
+                              definitionId="org.eclipse.ui.example.styleSheetFile">
+                        </reference>
+                     </with>
+                     <with
+                           variable="activeMenuEditorInput">
+                        <reference
+                              definitionId="org.eclipse.ui.example.styleSheetFile">
+                        </reference>
+                     </with>
+                  </or>
+               </visibleWhen>
+            </command>
+         </menu>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            defaultHandler="ca.concordia.cssanalyser.plugin.commandhandlers.PopupMenuHandler"
+            id="ca.concordia.cssanalyser.plugin.commands.OpenDuplicatedDeclarationsView"
+            name="DuplicaionsCommandName">
+      </command>
+   </extension>
+
+</plugin>

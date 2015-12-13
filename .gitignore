@@ -1,0 +1,6 @@
+/Ignore
+/build
+desktop.ini
+/bin
+*.*~
+.gradle
