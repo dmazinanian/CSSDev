@@ -54,23 +54,21 @@ public class ExtractMixinTreeViewerStyledLabelProvider implements IStyledLabelPr
 
 	public ExtractMixinTreeViewerStyledLabelProvider(MixinMigrationOpportunity<?> mixinMigrationOpportunity, int columnIndex) {
 		this.mixinMigrationOpportunity = mixinMigrationOpportunity;
-		populateMaps(mixinMigrationOpportunity);
+		populatePropertyAndLayersMap(mixinMigrationOpportunity);
 		this.columnIndex = columnIndex; 
 	}
 	
-	private static void populateMaps(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
-		if (propertiesAndLayers == null) {
-			propertiesAndLayers = new HashMap<>();
-			Iterable<MixinDeclaration> allMixinDeclarations = mixinMigrationOpportunity.getAllMixinDeclarations();
-			for (MixinDeclaration mixinDeclaration : allMixinDeclarations) {
-				List<PropertyAndLayer> propertiesAndLayersForThisMixinDeclaration = new ArrayList<>();
-				for (MixinValue mixinValue : mixinDeclaration.getMixinValues()) {
-					if (mixinValue.getAssignedTo() != null) {
-						propertiesAndLayersForThisMixinDeclaration.add(mixinValue.getAssignedTo());
-					}
+	private static void populatePropertyAndLayersMap(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
+		propertiesAndLayers = new HashMap<>();
+		Iterable<MixinDeclaration> allMixinDeclarations = mixinMigrationOpportunity.getAllMixinDeclarations();
+		for (MixinDeclaration mixinDeclaration : allMixinDeclarations) {
+			List<PropertyAndLayer> propertiesAndLayersForThisMixinDeclaration = new ArrayList<>();
+			for (MixinValue mixinValue : mixinDeclaration.getMixinValues()) {
+				if (mixinValue.getAssignedTo() != null) {
+					propertiesAndLayersForThisMixinDeclaration.add(mixinValue.getAssignedTo());
 				}
-				propertiesAndLayers.put(mixinDeclaration, propertiesAndLayersForThisMixinDeclaration);
 			}
+			propertiesAndLayers.put(mixinDeclaration, propertiesAndLayersForThisMixinDeclaration);
 		}
 	}
 
