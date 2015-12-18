@@ -5,6 +5,7 @@ import org.eclipse.jface.resource.ColorRegistry;
 import org.eclipse.jface.resource.FontRegistry;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.eclipse.ui.themes.ITheme;
@@ -62,4 +63,7 @@ public class PreferencesUtility {
 		return new ScopedPreferenceStore(InstanceScope.INSTANCE, CSS_PREFERENCES_QUALIFIER + "." + qualifierSuffix);
 	}
 
+	public static Color getTextEditorBackgroundColor() {
+		return new Color (Display.getCurrent(), 255, 255, 255);
+	}
 }

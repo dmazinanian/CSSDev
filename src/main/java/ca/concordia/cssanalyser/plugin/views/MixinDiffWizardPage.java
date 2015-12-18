@@ -132,6 +132,8 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 			treeColumn.pack();
 		}
 		
+		new ExtractMixinTreeViewerToolTipSupport(treeViewer);
+
 	}
 
 }
