@@ -196,7 +196,6 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 	
 		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.DECLARATION_TYPE) + ":");
 		new Label(tooltipArea, SWT.NONE).setText(getDeclarationTypeString(declaration));
-		
 	}
 	
 	private String getDeclarationTypeString(Declaration declaration) {
