@@ -97,7 +97,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		treeViewer.getTree().setLayoutData(treeViwereGridData);
 		
 		TreeViewerColumn column = new TreeViewerColumn(treeViewer, SWT.LEFT);
-		column.getColumn().setText("Property");
+		column.getColumn().setText(LocalizedStrings.get(Keys.PROPERTY));
 		column.setLabelProvider(new ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(mixinMigrationOpportunity, 0));
 		
 		int numberOfValueColumns = 0;
