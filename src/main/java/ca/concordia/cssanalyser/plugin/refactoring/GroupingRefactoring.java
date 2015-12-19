@@ -1,7 +1,6 @@
 package ca.concordia.cssanalyser.plugin.refactoring;
 
 import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -30,6 +29,8 @@ import ca.concordia.cssanalyser.cssmodel.selectors.GroupingSelector;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
 import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
+import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
+import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 
@@ -62,7 +63,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 
 	@Override
 	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
-		progressMonitor.beginTask("Creating change...", 1);
+		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
 		Set<Selector> emptySelectors = itemSet.getEmptySelectorsAfterRefactoring();
 		Set<Declaration> declarationsToRemove = itemSet.getDeclarationsToBeRemoved();
 		GroupingSelector newGrouping = itemSet.getGroupingSelector();
@@ -100,7 +101,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    }
 		    DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
 		    fileChangeRootEdit.addChildren(deleteEditsArray);
-		    result.addTextEditGroup(new TextEditGroup("Remove duplicated declarations", deleteEditsArray));
+		    result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
 		    
 		    // Add grouping selector
 		    if (fileContents.charAt(fileContents.length() - 1) == '}')
@@ -112,7 +113,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    	insertNewGroupingEdit = null;
 		    }
 		    fileChangeRootEdit.addChild(insertNewGroupingEdit);
-		    result.addTextEditGroup(new TextEditGroup(String.format("Add grouping selector \"%s\"", newGrouping), insertNewGroupingEdit));
+		    result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));
 		    
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -120,7 +121,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    CompositeChange change = new CompositeChange(getName(), (new Change[]{ result })) {
 	    	@Override
 	    	public ChangeDescriptor getDescriptor() {
-	    		String description = MessageFormat.format("Group declaration(s) {0} in selectors {1}", 
+	    		String description = String.format(LocalizedStrings.get(Keys.GROUP_DECLARATIONS_IN_SELECTORS), 
 	    				ItemSetUtil.getDeclarationNames(itemSet),
 	    				ItemSetUtil.getSelectorNames(itemSet));
 	    		return new RefactoringChangeDescriptor(new GroupingRefactoringDescriptor(description, null, itemSet, sourceFile));
