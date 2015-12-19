@@ -1,7 +1,6 @@
 package ca.concordia.cssanalyser.plugin.refactoring;
 
 import java.io.IOException;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +38,8 @@ import ca.concordia.cssanalyser.parser.CSSParserFactory;
 import ca.concordia.cssanalyser.parser.CSSParserFactory.CSSParserType;
 import ca.concordia.cssanalyser.parser.ParseException;
 import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
+import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
+import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
 import ca.concordia.cssanalyser.plugin.views.MixinDiffWizardPage;
 
@@ -70,7 +71,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 
 	@Override
 	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
-		progressMonitor.beginTask("Creating change...", 1);
+		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
 		TextFileChange result = new TextFileChange(sourceFile.getName(), sourceFile);
 		MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
 		result.setEdit(fileChangeRootEdit);
@@ -101,7 +102,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 		    }
 			DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
 			fileChangeRootEdit.addChildren(deleteEditsArray);
-			result.addTextEditGroup(new TextEditGroup("Remove duplicated declarations", deleteEditsArray));
+			result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
 			
 			// Add declarations if necessary
 			List<InsertEdit> insertEdits = new ArrayList<>();
@@ -115,13 +116,13 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			if (insertEdits.size() > 0) {
 				InsertEdit[] insertEditsArray = insertEdits.toArray(new InsertEdit[]{});
 				fileChangeRootEdit.addChildren(insertEditsArray);	
-				result.addTextEditGroup(new TextEditGroup("Add necessary declarations", insertEditsArray));
+				result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.ADD_NECESSARY_DECLARATIONS), insertEditsArray));
 			}
 			
 			// 3- Add the new Mixin 
 			InsertEdit newMixinInsertEdit = new InsertEdit(fileContents.length(), newMixinString);	 
 			fileChangeRootEdit.addChild(newMixinInsertEdit);
-			result.addTextEditGroup(new TextEditGroup(String.format("Add Mixin declaration \"%s\"", this.mixinMigrationOpportunity.getMixinName()),
+			result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), this.mixinMigrationOpportunity.getMixinName()),
 					newMixinInsertEdit));
 			
 			insertEdits.clear();
@@ -133,7 +134,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 				InsertEdit mixinCallInsertEdit = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);	 
 				fileChangeRootEdit.addChild(mixinCallInsertEdit);	
 				result.addTextEditGroup(new TextEditGroup(
-						String.format("Add Mixin call to selector\"%s\"", involvedSelector),
+						String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), involvedSelector),
 						mixinCallInsertEdit));
 			}
 			
@@ -143,7 +144,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	    CompositeChange change = new CompositeChange(getName(), (new Change[]{ result })) {
 	    	@Override
 	    	public ChangeDescriptor getDescriptor() {
-	    		String description = MessageFormat.format("Extract Mixin {0} from declaration(s) {1} in selectors {2}",
+	    		String description = String.format(LocalizedStrings.get(Keys.EXTRACT_MIXIN_FROM_DECLARATIONS_IN_SELECTORS),
 	    				mixinMigrationOpportunity.getMixinName(),
 	    				ItemSetUtil.getDeclarationNames(itemSet),
 	    				ItemSetUtil.getSelectorNames(itemSet));
