@@ -1,10 +1,15 @@
 package ca.concordia.cssanalyser.plugin.views;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.jface.layout.TableColumnLayout;
+import org.eclipse.jface.resource.FontDescriptor;
 import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ColumnWeightData;
@@ -16,10 +21,12 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.jface.window.ToolTip;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Table;
@@ -27,23 +34,33 @@ import org.eclipse.swt.widgets.TableColumn;
 
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.MultiValuedDeclaration;
+import ca.concordia.cssanalyser.cssmodel.declaration.PropertyAndLayer;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.SingleValuedDeclaration;
+import ca.concordia.cssanalyser.cssmodel.declaration.value.DeclarationValue;
 import ca.concordia.cssanalyser.cssmodel.media.MediaQueryList;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinDeclaration;
+import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinLiteral;
+import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
+import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinParameter;
+import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinValue;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
 
 public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSupport {
 
-	protected ExtractMixinTreeViewerToolTipSupport(ColumnViewer viewer) {
+	private final Map<MixinDeclaration, List<PropertyAndLayer>> propertiesAndLayersToDisplay;
+	private final MixinMigrationOpportunity<?> mixinMigrationOpportunity;
+
+	protected ExtractMixinTreeViewerToolTipSupport(ColumnViewer viewer, ExtractMixinTreeViewerContentProvider contentProvider) {
 		super(viewer, ToolTip.NO_RECREATE, false);
+		propertiesAndLayersToDisplay = contentProvider.getPropertiesAndLayersToDisplay();
+		mixinMigrationOpportunity = contentProvider.getMixinMigrationOpportunity();
 	}
 	
 	@Override
 	protected Composite createViewerToolTipContentArea(Event event, ViewerCell cell, Composite parent) {
-		
 		Composite tooltipContentArea = getTooltipContentArea(parent);
 		
 		Object element = cell.getElement();
@@ -67,32 +84,34 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 			}
 		}
 		
-		return tooltipContentArea;		
+		return tooltipContentArea;
 	}
 	
+	@Override
+	public boolean isHideOnMouseDown() {
+		return false;
+	}
+		
 	private Composite getTooltipContentArea(Composite parent) {
 		Composite tooltipArea = new Composite(parent, SWT.NONE);
 		GridLayout layout = new GridLayout(2, false);
-		layout.marginWidth = 5;
-		layout.verticalSpacing = 5;
-		layout.horizontalSpacing = 5;
+		layout.marginWidth = 10;
+		layout.marginHeight = 10;
+		layout.verticalSpacing = 10;
+		layout.horizontalSpacing = 10;
 		tooltipArea.setLayout(layout);
 		return tooltipArea;
 	}
 	
 	private void createMixinDeclarationPropertyArea(Composite tooltipArea, MixinDeclaration mixinDeclaration) {
 		
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.DECLARATION) + ":");
-		Label mixinDeclarationLabel = new Label(tooltipArea, SWT.BORDER);
-		mixinDeclarationLabel.setText(mixinDeclaration.getMixinDeclarationString());
-		mixinDeclarationLabel.setFont(PreferencesUtility.getTextEditorFont());
-		mixinDeclarationLabel.setBackground(PreferencesUtility.getTextEditorBackgroundColor());
-		mixinDeclarationLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true));
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATION));
+		createCodeLabel(tooltipArea, mixinDeclaration.getMixinDeclarationString());
 		
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.STYLED_PROPERTIES) + ":");
-		new Label(tooltipArea, SWT.NONE).setText(mixinDeclaration.getAllSetPropertyAndLayers().toString());
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));
+		createNormalLabel(tooltipArea, getPropertyAndLayersString(mixinDeclaration.getAllSetPropertyAndLayers()));
 	
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.DECLARATIONS) + ":");
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATIONS));
 		Composite tableViewerComposite = new Composite(tooltipArea, SWT.BORDER);
 		tableViewerComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true));
 		TableViewer declarationsTableViewer = new TableViewer(tableViewerComposite, SWT.MULTI | SWT.FULL_SELECTION);
@@ -119,6 +138,7 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 	    tableViewerComposite.setLayout(tableLayout);
 	     
 		declarationsTableViewer.setContentProvider(new IStructuredContentProvider() {
+			
 			@Override
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {}
 			
@@ -177,27 +197,53 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 		});
 		
 		declarationsTableViewer.setInput("");
+		
 	}
 	
 	private void createMixinDeclarationValueArea(Composite tooltipArea, MixinDeclaration mixinDeclaration, int columnIndex) {
-		// TODO Auto-generated method stub
+		MixinValue mixinValue = getMixinValueForMixinDeclaration(mixinDeclaration, columnIndex);
+		
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.MIXIN_VALUE_NAME));
+		createCodeLabel(tooltipArea, mixinValue.toString());
+		
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.MIXIN_DECLARATION));
+		createCodeLabel(tooltipArea, mixinDeclaration.getMixinDeclarationString());
+		
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.MIXIN_VALUE_TYPE));
+		createNormalLabel(tooltipArea, getMixinValueType(mixinValue));
+		
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));
+		createNormalLabel(tooltipArea, getPropertyAndLayersString(mixinValue.getAssignedTo()));
+	}
+
+	private MixinValue getMixinValueForMixinDeclaration(MixinDeclaration mixinDeclaration, int columnIndex) {
+		PropertyAndLayer propertyAndLayer = propertiesAndLayersToDisplay.get(mixinDeclaration).get(columnIndex - 1);
+		return mixinDeclaration.getMixinValueForPropertyandLayer(propertyAndLayer);
+	}
+
+	private String getMixinValueType(MixinValue mixinValue) {
+		Keys stringKey = null;
+		if (mixinValue instanceof MixinLiteral) {
+			stringKey = Keys.MIXIN_LITERAL;
+		} else if (mixinValue instanceof MixinParameter) {
+			stringKey = Keys.MIXIN_PARAMETER;
+		}
+		return LocalizedStrings.get(stringKey);
 	}
 
 	private void createDeclarationPropertyArea(Composite tooltipArea, Declaration declaration) {
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.SELECTOR) + ":");
-		Label mixinDeclarationLabel = new Label(tooltipArea, SWT.BORDER);
-		mixinDeclarationLabel.setText(declaration.toString());
-		mixinDeclarationLabel.setFont(PreferencesUtility.getTextEditorFont());
-		mixinDeclarationLabel.setBackground(PreferencesUtility.getTextEditorBackgroundColor());
-		mixinDeclarationLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true));
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.SELECTOR));
+		createCodeLabel(tooltipArea, declaration.toString());
 		
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.STYLED_PROPERTIES) + ":");
-		new Label(tooltipArea, SWT.WRAP).setText(declaration.getAllSetPropertyAndLayers().toString());
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));
+		Set<PropertyAndLayer> allSetPropertyAndLayers = declaration.getAllSetPropertyAndLayers(); 
+		String allSetPropertyAndLayersString = getPropertyAndLayersString(allSetPropertyAndLayers);
+		createNormalLabel(tooltipArea, allSetPropertyAndLayersString);
 	
-		new Label(tooltipArea, SWT.NONE).setText(LocalizedStrings.get(Keys.DECLARATION_TYPE) + ":");
-		new Label(tooltipArea, SWT.NONE).setText(getDeclarationTypeString(declaration));
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATION_TYPE));
+		createNormalLabel(tooltipArea, getDeclarationTypeString(declaration));
 	}
-	
+
 	private String getDeclarationTypeString(Declaration declaration) {
 		Keys stringKey = null;
 		if (declaration.getClass() == SingleValuedDeclaration.class) {
@@ -218,12 +264,98 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 	}
 
 	private void createDeclarationValueArea(Composite tooltipArea, Declaration declaration, int columnIndex) {
-		// TODO Auto-generated method stub
+		Collection<DeclarationValue> values = getDeclarationValue(declaration, columnIndex);
+		if (values == null) {
+			tooltipArea.dispose();
+		} else {
+			createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATION_VALUE));
+			createCodeLabel(tooltipArea, values.toString());
+
+			createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATION));
+			createCodeLabel(tooltipArea, declaration.toString());
+
+			createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));
+			DeclarationValue firstValue = values.iterator().next();
+			createNormalLabel(tooltipArea, getPropertyAndLayersString(firstValue.getCorrespondingStylePropertyAndLayer()));
+		}
+	}
+	
+	private String getPropertyAndLayersString(PropertyAndLayer correspondingStylePropertyAndLayer) {
+		List<PropertyAndLayer> dummyList = new ArrayList<>();
+		dummyList.add(correspondingStylePropertyAndLayer);
+		return getPropertyAndLayersString(dummyList);
 	}
 
-	@Override
-	public boolean isHideOnMouseDown() {
-		return false;
+	private String getPropertyAndLayersString(Collection<PropertyAndLayer> allSetPropertyAndLayers) {
+		Map<Integer, List<PropertyAndLayer>> propertiesAndLayersMap = new HashMap<>();
+		for (PropertyAndLayer propertyAndLayer : allSetPropertyAndLayers) {
+			int layer = propertyAndLayer.getPropertyLayer();
+			List<PropertyAndLayer> propertiesAndLayersListForThisLayer = propertiesAndLayersMap.get(layer);
+			if (propertiesAndLayersListForThisLayer == null) {
+				propertiesAndLayersListForThisLayer = new ArrayList<>();
+				propertiesAndLayersMap.put(layer, propertiesAndLayersListForThisLayer);
+			}
+			propertiesAndLayersListForThisLayer.add(propertyAndLayer);
+		}
+		
+		StringBuilder toReturn = new StringBuilder();
+		if (propertiesAndLayersMap.keySet().size() == 1) {
+			List<PropertyAndLayer> list = propertiesAndLayersMap.get(1);
+			getPropertiesForLayerString(toReturn, list);
+		} else if (propertiesAndLayersMap.keySet().size() > 1) {
+			for (Iterator<Integer> iterator = propertiesAndLayersMap.keySet().iterator(); iterator.hasNext();) {
+				int layer = iterator.next();
+				toReturn.append(LocalizedStrings.get(Keys.PROPERTY_LAYER) + " " + layer + ":\n");
+				List<PropertyAndLayer> list = propertiesAndLayersMap.get(layer);
+				getPropertiesForLayerString(toReturn, list);
+				if (iterator.hasNext())
+					toReturn.append("\n\n");
+			}
+		}
+		
+		return toReturn.toString();
+	}
+
+	private void getPropertiesForLayerString(StringBuilder builder, List<PropertyAndLayer> list) {
+		for (Iterator<PropertyAndLayer> iterator = list.iterator(); iterator.hasNext();) {
+			PropertyAndLayer propertyAndLayer = iterator.next();
+			builder.append(propertyAndLayer.getPropertyName());
+			if (iterator.hasNext())
+				builder.append(", ");
+		}
+	}
+
+	private Collection<DeclarationValue> getDeclarationValue(Declaration declaration, int columnIndex) {
+		MixinDeclaration mixinDeclaration = this.mixinMigrationOpportunity.getMixinDeclarationForDeclaration(declaration);
+		List<PropertyAndLayer> propertyAndLayers = propertiesAndLayersToDisplay.get(mixinDeclaration);
+		if (propertyAndLayers != null && columnIndex - 1 < propertyAndLayers.size()) {
+			PropertyAndLayer propertyAndLayer = propertyAndLayers.get(columnIndex - 1);
+			return declaration.getDeclarationValuesForStyleProperty(propertyAndLayer);
+		}
+		return null;
+	}
+
+	private Label createCodeLabel(Composite tooltipArea, String labelText) {
+		Label label = new Label(tooltipArea, SWT.BORDER);
+		label.setText(labelText);
+		label.setFont(PreferencesUtility.getTextEditorFont());
+		label.setBackground(PreferencesUtility.getTextEditorBackgroundColor());
+		label.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true));
+		return label;
+	}
+	
+	private Label createNormalLabel(Composite tooltipArea, String labelText) {
+		Label label = new Label(tooltipArea, SWT.NONE);
+		label.setText(labelText);
+		return label;
+	}
+
+	private Label createDescriptionLabel(Composite tooltipArea, String labelText) {
+		Label label = createNormalLabel(tooltipArea, labelText + ":");
+		FontDescriptor boldDescriptor = FontDescriptor.createFrom(label.getFont()).setStyle(SWT.BOLD);
+		Font boldFont = boldDescriptor.createFont(Display.getCurrent());		
+		label.setFont(boldFont);
+		return label;
 	}
 	
 }

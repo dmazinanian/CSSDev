@@ -1,8 +1,6 @@
 package ca.concordia.cssanalyser.plugin.views;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -46,32 +44,17 @@ public class ExtractMixinTreeViewerStyledLabelProvider implements IStyledLabelPr
 	        textStyle.font = boldFont;
 	    }
 	};
-
-	private static Map<MixinDeclaration, List<PropertyAndLayer>> propertiesAndLayers;
 	
 	private final int columnIndex;
 	private final MixinMigrationOpportunity<?> mixinMigrationOpportunity;
+	private final Map<MixinDeclaration, List<PropertyAndLayer>> propertiesAndLayers;
 
-	public ExtractMixinTreeViewerStyledLabelProvider(MixinMigrationOpportunity<?> mixinMigrationOpportunity, int columnIndex) {
-		this.mixinMigrationOpportunity = mixinMigrationOpportunity;
-		populatePropertyAndLayersMap(mixinMigrationOpportunity);
+	public ExtractMixinTreeViewerStyledLabelProvider(ExtractMixinTreeViewerContentProvider contentProvider, int columnIndex) {
+		this.mixinMigrationOpportunity = contentProvider.getMixinMigrationOpportunity();
+		this.propertiesAndLayers = contentProvider.getPropertiesAndLayersToDisplay();
 		this.columnIndex = columnIndex; 
 	}
 	
-	private static void populatePropertyAndLayersMap(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
-		propertiesAndLayers = new HashMap<>();
-		Iterable<MixinDeclaration> allMixinDeclarations = mixinMigrationOpportunity.getAllMixinDeclarations();
-		for (MixinDeclaration mixinDeclaration : allMixinDeclarations) {
-			List<PropertyAndLayer> propertiesAndLayersForThisMixinDeclaration = new ArrayList<>();
-			for (MixinValue mixinValue : mixinDeclaration.getMixinValues()) {
-				if (mixinValue.getAssignedTo() != null) {
-					propertiesAndLayersForThisMixinDeclaration.add(mixinValue.getAssignedTo());
-				}
-			}
-			propertiesAndLayers.put(mixinDeclaration, propertiesAndLayersForThisMixinDeclaration);
-		}
-	}
-
 	@Override
 	public Image getImage(Object element) {
 		return null;

@@ -4,13 +4,12 @@ import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
 import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.graphics.Font;
 
-import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
 
 public class ExtractMixinTreeViewerDelegatingStyledCellLabelProvider extends DelegatingStyledCellLabelProvider {
 	
-	public ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(MixinMigrationOpportunity<?> mixinMigrationOpportunity, int columnIndex) {
-		super(new ExtractMixinTreeViewerStyledLabelProvider(mixinMigrationOpportunity, columnIndex));
+	public ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(ExtractMixinTreeViewerContentProvider contentProvider, int columnIndex) {
+		super(new ExtractMixinTreeViewerStyledLabelProvider(contentProvider, columnIndex));
 	}
 	
 	@Override

@@ -87,7 +87,8 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		diffArea.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		
 		TreeViewer treeViewer = new TreeViewer(diffArea, SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
-		treeViewer.setContentProvider(new ExtractMixinTreeViewerContentProvider(mixinMigrationOpportunity));
+		ExtractMixinTreeViewerContentProvider contentProvider = new ExtractMixinTreeViewerContentProvider(mixinMigrationOpportunity);
+		treeViewer.setContentProvider(contentProvider);
 		
 		GridData treeViwereGridData = new GridData(SWT.FILL, SWT.FILL, true, true);
 		treeViwereGridData.horizontalAlignment = SWT.FILL;
@@ -98,7 +99,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		
 		TreeViewerColumn column = new TreeViewerColumn(treeViewer, SWT.LEFT);
 		column.getColumn().setText(LocalizedStrings.get(Keys.PROPERTY));
-		column.setLabelProvider(new ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(mixinMigrationOpportunity, 0));
+		column.setLabelProvider(new ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(contentProvider, 0));
 		
 		int numberOfValueColumns = 0;
 		
@@ -120,7 +121,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		for (int i = 1; i <= numberOfValueColumns; i++) {
 			TreeViewerColumn variableColumn = new TreeViewerColumn(treeViewer, SWT.LEFT);
 			//variableColumn.getColumn().setText("Value " + i);
-			variableColumn.setLabelProvider(new ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(mixinMigrationOpportunity, i));
+			variableColumn.setLabelProvider(new ExtractMixinTreeViewerDelegatingStyledCellLabelProvider(contentProvider, i));
 		}		
 				
 		treeViewer.setInput(""); // See getElements for ExtractMixinTreeViewerContentProvider
@@ -131,8 +132,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		for (TreeColumn treeColumn : treeViewer.getTree().getColumns()) {
 			treeColumn.pack();
 		}
-		
-		new ExtractMixinTreeViewerToolTipSupport(treeViewer);
+		new ExtractMixinTreeViewerToolTipSupport(treeViewer, contentProvider);
 
 	}
 
