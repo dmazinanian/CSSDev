@@ -2,7 +2,9 @@ package ca.concordia.cssanalyser.plugin.refactoring;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
@@ -19,6 +21,7 @@ import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.InsertEdit;
 import org.eclipse.text.edits.MultiTextEdit;
+import org.eclipse.text.edits.TextEditGroup;
 
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
 import ca.concordia.cssanalyser.cssmodel.LocationInfo;
@@ -91,22 +94,37 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	    		offsetsAndLengths.add(offsetLength);
 			}
 			
+			List<DeleteEdit> deleteEdits = new ArrayList<>();
 			for (OffsetLength offsetAndLength : offsetsAndLengths.getNonOverlappingOffsetsAndLengths()) {
 		    	DeleteEdit deleteEdit = new DeleteEdit(offsetAndLength.getOffset(), offsetAndLength.getLength());
-		    	fileChangeRootEdit.addChild(deleteEdit);
+		    	deleteEdits.add(deleteEdit);
 		    }
+			DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
+			fileChangeRootEdit.addChildren(deleteEditsArray);
+			result.addTextEditGroup(new TextEditGroup("Remove duplicated declarations", deleteEditsArray));
 			
+			// Add declarations if necessary
+			List<InsertEdit> insertEdits = new ArrayList<>();
 			for (Declaration declaration : this.mixinMigrationOpportunity.getDeclarationsToBeAdded()) {
 				Selector parentSelector = declaration.getSelector();
 				int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(parentSelector);
 				String declarationString = declaration.toString();
-				InsertEdit mixinCallInsertEdit = new InsertEdit(lastCharOfSelectorOffset, declarationString);	 
-				fileChangeRootEdit.addChild(mixinCallInsertEdit);	
+				InsertEdit newDeclarationInsertEdit = new InsertEdit(lastCharOfSelectorOffset, declarationString);	
+				insertEdits.add(newDeclarationInsertEdit);
 			}
+			if (insertEdits.size() > 0) {
+				InsertEdit[] insertEditsArray = insertEdits.toArray(new InsertEdit[]{});
+				fileChangeRootEdit.addChildren(insertEditsArray);	
+				result.addTextEditGroup(new TextEditGroup("Add necessary declarations", insertEditsArray));
+			}
+			
 			// 3- Add the new Mixin 
 			InsertEdit newMixinInsertEdit = new InsertEdit(fileContents.length(), newMixinString);	 
 			fileChangeRootEdit.addChild(newMixinInsertEdit);
+			result.addTextEditGroup(new TextEditGroup(String.format("Add Mixin declaration \"%s\"", this.mixinMigrationOpportunity.getMixinName()),
+					newMixinInsertEdit));
 			
+			insertEdits.clear();
 			// 4- Add Mixin calls to the involved selectors
 			for (Selector involvedSelector : this.mixinMigrationOpportunity.getInvolvedSelectors()) {									
 				String mixinCallString = this.mixinMigrationOpportunity.getMixinReferenceString(involvedSelector);
@@ -114,6 +132,9 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 				mixinCallString = PreferencesUtility.getTabString() + mixinCallString + System.lineSeparator();
 				InsertEdit mixinCallInsertEdit = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);	 
 				fileChangeRootEdit.addChild(mixinCallInsertEdit);	
+				result.addTextEditGroup(new TextEditGroup(
+						String.format("Add Mixin call to selector\"%s\"", involvedSelector),
+						mixinCallInsertEdit));
 			}
 			
 		} catch (IOException exception) {
