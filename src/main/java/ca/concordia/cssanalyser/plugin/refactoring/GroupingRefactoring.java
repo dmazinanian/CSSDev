@@ -2,7 +2,9 @@ package ca.concordia.cssanalyser.plugin.refactoring;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
@@ -19,6 +21,7 @@ import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.InsertEdit;
 import org.eclipse.text.edits.MultiTextEdit;
+import org.eclipse.text.edits.TextEditGroup;
 
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
 import ca.concordia.cssanalyser.cssmodel.LocationInfo;
@@ -29,7 +32,6 @@ import ca.concordia.cssanalyser.io.IOHelper;
 import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
-
 
 public class GroupingRefactoring extends DuplicationRefactoring {
 	
@@ -72,15 +74,6 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    String fileContents;
 		try {
 			fileContents = IOHelper.readFileToString(sourceFile.getLocation().toOSString());
-			if (fileContents.charAt(fileContents.length() - 1) == '}')
-				newGroupingSelectorText = System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText;
-		    InsertEdit insertNewGroupingEdit;
-		    if (this.dependenciesToHold == null) {
-		    	insertNewGroupingEdit = new InsertEdit(fileContents.length(), newGroupingSelectorText);	 
-		    } else {
-		    	insertNewGroupingEdit = null;
-		    }
-		    fileChangeRootEdit.addChild(insertNewGroupingEdit);
 		    
 		    OffsetLengthList offsetsAndLengths = new OffsetLengthList();
 		    
@@ -100,13 +93,28 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    	}
 		    }
 		    
+		    List<DeleteEdit> deleteEdits = new ArrayList<>();
 		    for (OffsetLength offsetAndLength : offsetsAndLengths.getNonOverlappingOffsetsAndLengths()) {
 		    	DeleteEdit deleteEdit = new DeleteEdit(offsetAndLength.getOffset(), offsetAndLength.getLength());
-		    	fileChangeRootEdit.addChild(deleteEdit);
+		    	deleteEdits.add(deleteEdit);
 		    }
+		    DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
+		    fileChangeRootEdit.addChildren(deleteEditsArray);
+		    result.addTextEditGroup(new TextEditGroup("Remove duplicated declarations", deleteEditsArray));
+		    
+		    // Add grouping selector
+		    if (fileContents.charAt(fileContents.length() - 1) == '}')
+				newGroupingSelectorText = System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText;
+		    InsertEdit insertNewGroupingEdit;
+		    if (this.dependenciesToHold == null) {
+		    	insertNewGroupingEdit = new InsertEdit(fileContents.length(), newGroupingSelectorText);	 
+		    } else {
+		    	insertNewGroupingEdit = null;
+		    }
+		    fileChangeRootEdit.addChild(insertNewGroupingEdit);
+		    result.addTextEditGroup(new TextEditGroup(String.format("Add grouping selector \"%s\"", newGrouping), insertNewGroupingEdit));
 		    
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	    CompositeChange change = new CompositeChange(getName(), (new Change[]{ result })) {
