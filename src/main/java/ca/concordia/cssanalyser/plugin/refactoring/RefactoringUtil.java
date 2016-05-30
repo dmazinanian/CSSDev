@@ -10,7 +10,7 @@ public class RefactoringUtil {
 		int length = locationInfo.getLength();
 		// Try to delete redundant stuff
 		int startFrom = offset;
-		while (startFrom >= 0) {
+		while (startFrom > 0) {
 			char charAt = fileContents.charAt(--startFrom);
 			if (charAt == ' ' || charAt == '\t') {
 				offset--;

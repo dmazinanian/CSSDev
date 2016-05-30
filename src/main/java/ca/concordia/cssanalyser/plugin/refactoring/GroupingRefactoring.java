@@ -28,7 +28,7 @@ import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.GroupingSelector;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
-import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
+import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
@@ -40,12 +40,12 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	
 	private final CSSValueOverridingDependencyList dependenciesToHold;
 	
-	public GroupingRefactoring(ItemSet itemSet, IFile selectedFile) {
-		this(itemSet, null, selectedFile);
+	public GroupingRefactoring(DuplicationInfo duplicationInfo, IFile selectedFile) {
+		this(duplicationInfo, null, selectedFile);
 	}
 
-	public GroupingRefactoring(ItemSet itemSet, CSSValueOverridingDependencyList dependenciesToHold, IFile selectedFile) {
-		super(itemSet, selectedFile);
+	public GroupingRefactoring(DuplicationInfo duplicationInfo, CSSValueOverridingDependencyList dependenciesToHold, IFile selectedFile) {
+		super(duplicationInfo, selectedFile);
 		this.dependenciesToHold = dependenciesToHold;
 	}
 
@@ -63,6 +63,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 
 	@Override
 	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
+		ItemSet itemSet = duplicationInfo.getItemSet();
 		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
 		Set<Selector> emptySelectors = itemSet.getEmptySelectorsAfterRefactoring();
 		Set<Declaration> declarationsToRemove = itemSet.getDeclarationsToBeRemoved();
@@ -122,9 +123,9 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    	@Override
 	    	public ChangeDescriptor getDescriptor() {
 	    		String description = String.format(LocalizedStrings.get(Keys.GROUP_DECLARATIONS_IN_SELECTORS), 
-	    				ItemSetUtil.getDeclarationNames(itemSet),
-	    				ItemSetUtil.getSelectorNames(itemSet));
-	    		return new RefactoringChangeDescriptor(new GroupingRefactoringDescriptor(description, null, itemSet, sourceFile));
+	    				duplicationInfo.getDeclarationNames(),
+	    				duplicationInfo.getSelectorNames());
+	    		return new RefactoringChangeDescriptor(new GroupingRefactoringDescriptor(description, null, duplicationInfo, sourceFile));
 	    	}
 	    };
 	    progressMonitor.done();

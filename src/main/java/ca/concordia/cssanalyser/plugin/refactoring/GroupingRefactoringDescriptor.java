@@ -6,22 +6,22 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
-import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
+import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 
 public class GroupingRefactoringDescriptor extends RefactoringDescriptor {
 	
-	private final ItemSet itemSet;
+	private final DuplicationInfo duplicationInfo;
 	private final IFile selectedFile;
 
-	protected GroupingRefactoringDescriptor(String description, String comment, ItemSet itemSet, IFile sourceFile) {
+	protected GroupingRefactoringDescriptor(String description, String comment, DuplicationInfo duplicationInfo, IFile sourceFile) {
 		super(GroupingRefactoring.REFACTORING_ID, sourceFile.getProject().getName(), description, comment, RefactoringDescriptor.NONE);
-		this.itemSet = itemSet;
+		this.duplicationInfo = duplicationInfo;
 		selectedFile = sourceFile;
 	}
 
 	@Override
 	public Refactoring createRefactoring(RefactoringStatus arg0) throws CoreException {
-		return new GroupingRefactoring(itemSet, selectedFile);
+		return new GroupingRefactoring(duplicationInfo, selectedFile);
 	}
 
 }

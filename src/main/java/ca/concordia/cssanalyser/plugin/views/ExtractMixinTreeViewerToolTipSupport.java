@@ -213,7 +213,7 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 		createNormalLabel(tooltipArea, getMixinValueType(mixinValue));
 		
 		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));
-		createNormalLabel(tooltipArea, getPropertyAndLayersString(mixinValue.getAssignedTo()));
+		createNormalLabel(tooltipArea, getPropertyAndLayersString(mixinDeclaration.getPropertyAndLayerForMixinValue(mixinValue)));
 	}
 
 	private MixinValue getMixinValueForMixinDeclaration(MixinDeclaration mixinDeclaration, int columnIndex) {
@@ -233,6 +233,9 @@ public class ExtractMixinTreeViewerToolTipSupport extends ColumnViewerToolTipSup
 
 	private void createDeclarationPropertyArea(Composite tooltipArea, Declaration declaration) {
 		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.SELECTOR));
+		createCodeLabel(tooltipArea, declaration.getSelector().toString());
+		
+		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.DECLARATION));
 		createCodeLabel(tooltipArea, declaration.toString());
 		
 		createDescriptionLabel(tooltipArea, LocalizedStrings.get(Keys.STYLED_PROPERTIES));

@@ -22,22 +22,16 @@ import org.eclipse.text.edits.InsertEdit;
 import org.eclipse.text.edits.MultiTextEdit;
 import org.eclipse.text.edits.TextEditGroup;
 
-import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
+import ca.concordia.cssanalyser.app.FileLogger;
 import ca.concordia.cssanalyser.cssmodel.LocationInfo;
-import ca.concordia.cssanalyser.cssmodel.StyleSheet;
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
-import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorMigrationOpportunitiesDetector;
-import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorMigrationOpportunitiesDetectorFactory;
 import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorType;
+import ca.concordia.cssanalyser.migration.topreprocessors.less.LessMixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
-import ca.concordia.cssanalyser.parser.CSSParser;
-import ca.concordia.cssanalyser.parser.CSSParserFactory;
-import ca.concordia.cssanalyser.parser.CSSParserFactory.CSSParserType;
-import ca.concordia.cssanalyser.parser.ParseException;
-import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
+import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
@@ -49,12 +43,9 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	
 	private final MixinMigrationOpportunity<?> mixinMigrationOpportunity;
 	
-	public MixinMigrationRefactoring(ItemSet selectedItemSet, IFile sourceFile, PreprocessorType preprocessorType) throws ParseException {
-		super(selectedItemSet, sourceFile);
-		CSSParser parser = CSSParserFactory.getCSSParser(CSSParserType.LESS);
-		StyleSheet styleSheet = parser.parseExternalCSS(sourceFile.getLocation().toOSString());
-		PreprocessorMigrationOpportunitiesDetector<?> preprocessorOpportunities = PreprocessorMigrationOpportunitiesDetectorFactory.get(preprocessorType, styleSheet);
-		mixinMigrationOpportunity = preprocessorOpportunities.getMixinOpportunityFromItemSet(selectedItemSet);
+	public MixinMigrationRefactoring(DuplicationInfo duplicationInfo, IFile sourceFile, PreprocessorType preprocessorType) {
+		super(duplicationInfo, sourceFile);
+		mixinMigrationOpportunity = duplicationInfo.geMixinMigrationOpportunity();
 	}
 
 	@Override
@@ -66,43 +57,45 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor arg0)
 			throws CoreException, OperationCanceledException {
-		return new RefactoringStatus();
+		RefactoringStatus refactoringStatus = new RefactoringStatus();
+		if (!this.mixinMigrationOpportunity.preservesPresentation()) {
+			refactoringStatus.addError(LocalizedStrings.get(Keys.BREAK_PRESENTATION_ERROR));
+		}
+		return refactoringStatus;
 	}
 
 	@Override
 	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
 		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
-		TextFileChange result = new TextFileChange(sourceFile.getName(), sourceFile);
+		TextFileChange resultingChange = new TextFileChange(sourceFile.getName(), sourceFile);
 		MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
-		result.setEdit(fileChangeRootEdit);
-
-		String newMixinString = this.mixinMigrationOpportunity.toString();
+		resultingChange.setEdit(fileChangeRootEdit);
 
 		try {
 			String fileContents = IOHelper.readFileToString(sourceFile.getLocation().toOSString());
+			
+			String newMixinString = this.mixinMigrationOpportunity.toString();
 			if (fileContents.charAt(fileContents.length() - 1) == '}')
 				newMixinString = System.lineSeparator() + System.lineSeparator() + newMixinString;
 			
 			OffsetLengthList offsetsAndLengths = new OffsetLengthList();
 			
 			// 1- Remove the declarations being parameterized
-			// MixinMigrationOpportunity#getDeclarationsToBeRemoved() returns declarations, including 
-			// virtual shorthands. We need to extract the real ones from them!
-			Set<Declaration> realDeclarationsToRemove = getRealDeclarationsToRemove(this.mixinMigrationOpportunity.getDeclarationsToBeRemoved());
+			//Set<Declaration> realDeclarationsToRemove = getRealDeclarationsToRemove(this.mixinMigrationOpportunity.getDeclarationsToBeRemoved());
+			Iterable<Declaration> realDeclarationsToRemove = this.mixinMigrationOpportunity.getDeclarationsToBeRemoved();
 			for (Declaration declarationToRemove : realDeclarationsToRemove) {
 				LocationInfo locationInfo = declarationToRemove.getLocationInfo();
 	    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
 	    		offsetsAndLengths.add(offsetLength);
 			}
 			
-			List<DeleteEdit> deleteEdits = new ArrayList<>();
+			TextEditGroup textEditGroup = new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS));
 			for (OffsetLength offsetAndLength : offsetsAndLengths.getNonOverlappingOffsetsAndLengths()) {
 		    	DeleteEdit deleteEdit = new DeleteEdit(offsetAndLength.getOffset(), offsetAndLength.getLength());
-		    	deleteEdits.add(deleteEdit);
+		    	textEditGroup.addTextEdit(deleteEdit);
 		    }
-			DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
-			fileChangeRootEdit.addChildren(deleteEditsArray);
-			result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
+			fileChangeRootEdit.addChildren(textEditGroup.getTextEdits());
+			resultingChange.addTextEditGroup(textEditGroup);
 			
 			// Add declarations if necessary
 			List<InsertEdit> insertEdits = new ArrayList<>();
@@ -116,40 +109,77 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			if (insertEdits.size() > 0) {
 				InsertEdit[] insertEditsArray = insertEdits.toArray(new InsertEdit[]{});
 				fileChangeRootEdit.addChildren(insertEditsArray);	
-				result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.ADD_NECESSARY_DECLARATIONS), insertEditsArray));
+				resultingChange.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.ADD_NECESSARY_DECLARATIONS), insertEditsArray));
 			}
 			
 			// 3- Add the new Mixin 
 			InsertEdit newMixinInsertEdit = new InsertEdit(fileContents.length(), newMixinString);	 
 			fileChangeRootEdit.addChild(newMixinInsertEdit);
-			result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), this.mixinMigrationOpportunity.getMixinName()),
+			resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), this.mixinMigrationOpportunity.getMixinName()),
 					newMixinInsertEdit));
-			
-			insertEdits.clear();
+
 			// 4- Add Mixin calls to the involved selectors
 			for (Selector involvedSelector : this.mixinMigrationOpportunity.getInvolvedSelectors()) {									
 				String mixinCallString = this.mixinMigrationOpportunity.getMixinReferenceString(involvedSelector);
-				int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(involvedSelector);
 				mixinCallString = PreferencesUtility.getTabString() + mixinCallString + System.lineSeparator();
-				InsertEdit mixinCallInsertEdit = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);	 
-				fileChangeRootEdit.addChild(mixinCallInsertEdit);	
-				result.addTextEditGroup(new TextEditGroup(
-						String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), involvedSelector),
-						mixinCallInsertEdit));
+				try {
+					Declaration[] positionsMap = this.mixinMigrationOpportunity.getMixinCallPosition(involvedSelector);
+
+					if (positionsMap == null) { // don't touch anything, just add the call to the end
+						int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(involvedSelector);
+						InsertEdit insertNewMixinCall = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);
+						fileChangeRootEdit.addChild(insertNewMixinCall);
+						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), this.mixinMigrationOpportunity.getMixinName()),
+								insertNewMixinCall));
+					} else {
+						TextEditGroup addAndReOrderEditGroup = new TextEditGroup(
+								String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL_REORDER_DECLARTIONS), 
+										this.mixinMigrationOpportunity.getMixinName(), involvedSelector));
+						// Remove all declarations
+						for (Declaration declaration : involvedSelector.getDeclarations()) {
+							Set<Declaration> involvedDeclarations = this.mixinMigrationOpportunity.getInvolvedDeclarations(involvedSelector);
+							if (!involvedDeclarations.contains(declaration)) {
+								OffsetLength expandedAreaToRemove = RefactoringUtil.expandAreaToRemove(fileContents, declaration.getLocationInfo());
+								DeleteEdit deleteEdit = new DeleteEdit(expandedAreaToRemove.getOffset(), expandedAreaToRemove.getLength());
+								addAndReOrderEditGroup.addTextEdit(deleteEdit);
+							}
+						}
+
+						for (int i = 0; i < positionsMap.length; i++) {
+							Declaration declaration = positionsMap[i];
+							String stringToAdd;
+							if ("MIXIN".equals(declaration.getProperty().toUpperCase())) {
+								stringToAdd = mixinCallString;
+							} else {
+								stringToAdd = PreferencesUtility.getTabString() + declaration.toString();
+								if (i != positionsMap.length - 1) {
+									 stringToAdd += ";";
+								}
+								stringToAdd += System.lineSeparator();
+							}
+							InsertEdit insertEdit = new InsertEdit(involvedSelector.getLocationInfo().getOffset() + involvedSelector.getLocationInfo().getLength() - 1, stringToAdd);
+							addAndReOrderEditGroup.addTextEdit(insertEdit);
+						}
+						fileChangeRootEdit.addChildren(addAndReOrderEditGroup.getTextEdits());
+						resultingChange.addTextEditGroup(addAndReOrderEditGroup);	
+					}
+				} catch (Exception ex){
+					FileLogger.getLogger(LessMixinMigrationOpportunity.class).warn(ex.getMessage() + "\n" + this.toString());
+				}
 			}
 			
 		} catch (IOException exception) {
 			exception.printStackTrace();
 		}
-	    CompositeChange change = new CompositeChange(getName(), (new Change[]{ result })) {
+	    CompositeChange change = new CompositeChange(getName(), (new Change[]{ resultingChange })) {
 	    	@Override
 	    	public ChangeDescriptor getDescriptor() {
 	    		String description = String.format(LocalizedStrings.get(Keys.EXTRACT_MIXIN_FROM_DECLARATIONS_IN_SELECTORS),
 	    				mixinMigrationOpportunity.getMixinName(),
-	    				ItemSetUtil.getDeclarationNames(itemSet),
-	    				ItemSetUtil.getSelectorNames(itemSet));
+	    				duplicationInfo.getDeclarationNames(),
+	    				duplicationInfo.getSelectorNames());
 	    		MixinMigrationRefactoringDescriptor refactoringDescriptor = 
-	    				new MixinMigrationRefactoringDescriptor(description, null, itemSet, sourceFile, 
+	    				new MixinMigrationRefactoringDescriptor(description, null, duplicationInfo, sourceFile, 
 	    						mixinMigrationOpportunity.getMixinName(),
 	    						mixinMigrationOpportunity.getPreprocessorType());
 				return new RefactoringChangeDescriptor(refactoringDescriptor);
@@ -164,6 +194,13 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 		return locationInfo.getOffset() + locationInfo.getLength() - 1;
 	}
 
+	/**
+	 * Now I am using the method that the core provides.
+	 * @deprecated
+	 * @param declarationsToBeRemoved
+	 * @return
+	 */
+	@SuppressWarnings("unused")
 	private Set<Declaration> getRealDeclarationsToRemove(Iterable<Declaration> declarationsToBeRemoved) {
 		Set<Declaration> toReturn = new HashSet<>();
 		for (Declaration declarationToRemove : declarationsToBeRemoved) {

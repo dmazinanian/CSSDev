@@ -30,8 +30,9 @@ public class ExtractMixinTreeViewerContentProvider implements ITreeContentProvid
 		for (MixinDeclaration mixinDeclaration : allMixinDeclarations) {
 			List<PropertyAndLayer> propertiesAndLayersForThisMixinDeclaration = new ArrayList<>();
 			for (MixinValue mixinValue : mixinDeclaration.getMixinValues()) {
-				if (mixinValue.getAssignedTo() != null) {
-					propertiesAndLayersForThisMixinDeclaration.add(mixinValue.getAssignedTo());
+				PropertyAndLayer propertyAndLayerForMixinValue = mixinDeclaration.getPropertyAndLayerForMixinValue(mixinValue);
+				if (propertyAndLayerForMixinValue != null) {
+					propertiesAndLayersForThisMixinDeclaration.add(propertyAndLayerForMixinValue);
 				}
 			}
 			propertiesAndLayers.put(mixinDeclaration, propertiesAndLayersForThisMixinDeclaration);

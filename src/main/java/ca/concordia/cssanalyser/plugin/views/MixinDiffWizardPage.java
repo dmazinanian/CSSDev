@@ -111,7 +111,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		for (MixinDeclaration mixinDeclaration : mixinDeclarations) {
 			int numberOfValues = 0;
 			for (MixinValue declarationValue : mixinDeclaration.getMixinValues()) {
-				if (declarationValue.getAssignedTo() != null)
+				if (mixinDeclaration.getPropertyAndLayerForMixinValue(declarationValue) != null)
 					numberOfValues++;
 			}
 			if (numberOfValues > numberOfValueColumns)

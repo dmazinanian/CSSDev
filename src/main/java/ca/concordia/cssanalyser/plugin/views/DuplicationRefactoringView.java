@@ -94,12 +94,14 @@ import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
 import ca.concordia.cssanalyser.plugin.refactoring.GroupingRefactoring;
 import ca.concordia.cssanalyser.plugin.refactoring.MixinMigrationRefactoring;
-import ca.concordia.cssanalyser.plugin.utility.ItemSetUtil;
+import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ResultsStorage;
 
 public class DuplicationRefactoringView extends ViewPart {
+
+	private static final PreprocessorType PREPROCESSOR_TYPE = PreprocessorType.LESS;
 
 	public static final String ID = "ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView";
 
@@ -202,9 +204,9 @@ public class DuplicationRefactoringView extends ViewPart {
 	};
 	
 	private static class DuplicationViewContentProvider implements IStructuredContentProvider {
-		private final List<ItemSet> allItemSets;
-		public DuplicationViewContentProvider(List<ItemSet> allItemSets) {
-			this.allItemSets = allItemSets;
+		private final List<DuplicationInfo> duplicationInfoList;
+		public DuplicationViewContentProvider(List<DuplicationInfo> duplicationInfoList) {
+			this.duplicationInfoList = duplicationInfoList;
 		}
 		
 		public void inputChanged(Viewer v, Object oldInput, Object newInput) {}
@@ -212,20 +214,23 @@ public class DuplicationRefactoringView extends ViewPart {
 		public void dispose() {}
 		
 		public Object[] getElements(Object parent) {
-			if (allItemSets == null)
+			if (duplicationInfoList == null)
 				return new String[] {};
-			return allItemSets.toArray();
+			return duplicationInfoList.toArray();
 		}
 	}
 	
-	private static class DuplicationViewLabelProvider extends LabelProvider implements ITableLabelProvider {
+	private class DuplicationViewLabelProvider extends LabelProvider implements ITableLabelProvider {
+		
 		public String getColumnText(Object obj, int index) {
-			ItemSet entry = (ItemSet)obj;
+			DuplicationInfo selectedDuplicationInfoObject = (DuplicationInfo) obj;
 			switch(index){
 			case 0:
-				return ItemSetUtil.getDeclarationNames(entry);
+				return selectedDuplicationInfoObject.getDeclarationNames();
 			case 1:
-				return ItemSetUtil.getSelectorNames(entry);
+				return selectedDuplicationInfoObject.getSelectorNames();
+			case 2:
+				return String.valueOf(selectedDuplicationInfoObject.getRank()); 
 			default:
 				return "";
 			}
@@ -236,22 +241,23 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 	
-	private static class DuplicationViewNameSorter extends ViewerSorter {
+	private class DuplicationViewNameSorter extends ViewerSorter {
+
 		@Override
 		public int compare(Viewer viewer, Object obj1, Object obj2) {
-			double value1 = ((ItemSet)obj1).getGroupingRefactoringImpact();
-			double value2 = ((ItemSet)obj2).getGroupingRefactoringImpact();
-			if(value1 > value2) {
-				return -1;
-			} else {
-				return 1;
-			}
+			
+			DuplicationInfo duplicationInfo1 = (DuplicationInfo)obj1;
+			double rank1 = duplicationInfo1.getRank();
+			
+			DuplicationInfo duplicationInfo2 = (DuplicationInfo)obj2;
+			double rank2 = duplicationInfo2.getRank();
+
+			return Double.compare(rank1, rank2);
 		}
 	}
 
 	@Override
 	public void createPartControl(Composite parent) {
-		
 		GridLayout gridLayout = new GridLayout();
 	    gridLayout.numColumns = 1;		
 	    parent.setLayout(gridLayout);
@@ -261,9 +267,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		makeActions();
 		hookDoubleClickAction();
 		contributeToActionBars();
-		
 		hookListeners();
-		
 	}
 	
 	@Override
@@ -309,25 +313,30 @@ public class DuplicationRefactoringView extends ViewPart {
 		column2.setResizable(true);
 		column2.pack();
 		
-		viewer.setColumnProperties(new String[] {"declarations", "selectors"});
+		TableColumn column3 = new TableColumn(viewer.getTable(), SWT.LEFT);
+		column3.setText("Penalty"); //TODO
+		column3.setResizable(true);
+		column3.pack();
+		
+		viewer.setColumnProperties(new String[] {"declarations", "selectors", "penalty"});
 		viewer.getTable().setLayoutData(new GridData(GridData.FILL_BOTH));
 		
 		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent arg0) {
 				viewer.getTable().setMenu(null);
-				ItemSet selectedItemSet = (ItemSet)((IStructuredSelection)viewer.getSelection()).getFirstElement();
-				if (selectedItemSet != null) {
-					getRightClickMenu(viewer, selectedItemSet);
+				DuplicationInfo selectedDuplicationInfo = getSelectedDuplicationInfo();
+				if (selectedDuplicationInfo != null) {
+					getRightClickMenu(viewer, selectedDuplicationInfo);
 				}
 			}
 
-			private void getRightClickMenu(TableViewer viewer, ItemSet selectedItemSet) {
+			private void getRightClickMenu(TableViewer viewer, DuplicationInfo duplicationInfo) {
 				MenuManager menuMgr = new MenuManager("#PopupMenu");
 				menuMgr.setRemoveAllWhenShown(true);
 				menuMgr.addMenuListener(new IMenuListener() {
 					public void menuAboutToShow(IMenuManager manager) {
-						boolean haveDifferences = selectedItemSet.containsDifferencesInValues();
+						boolean haveDifferences = duplicationInfo.hasDifferences();
 						if (!haveDifferences){ 
 							manager.add(groupingRefactoringOpportunitiesAction);
 							manager.add(new Separator());
@@ -432,37 +441,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		
 		tableRowDoubleClickAction = new Action() {
 			public void run() {
-				ItemSet selectedItemSet = getSelectedItemSet();
-				IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-				try {
-					StructuredTextEditor ste = (StructuredTextEditor)IDE.openEditor(page, selectedFile);
-					Set<Declaration> declarationsToAnnotate = new HashSet<>();
-					clearAnnotations(ste);
-					for(Item item : selectedItemSet) {
-						for (Declaration declaration : item) {
-							if (declaration instanceof ShorthandDeclaration && ((ShorthandDeclaration) declaration).isVirtual()) {
-								ShorthandDeclaration shorthandDeclaration = (ShorthandDeclaration) declaration;
-								for (Declaration individualDeclaration : shorthandDeclaration.getIndividualDeclarations()) {
-									declarationsToAnnotate.add(individualDeclaration);
-								}
-							} else {
-								declarationsToAnnotate.add(declaration);
-							}
-						}
-					}
-					
-					List<CSSAnnotation> annotations = new ArrayList<>();
-					for (Declaration declaration : declarationsToAnnotate) {
-						Position position = new Position(declaration.getLocationInfo().getOffset(), declaration.getLocationInfo().getLength());
-						CSSAnnotation cssAnnotation = new CSSAnnotation(CSSAnnotationType.DUPLICATION, 
-								"Duplicated " + declaration.getProperty(),
-								position);
-						annotations.add(cssAnnotation);
-					}
-					setAnnotations(annotations, ste);
-				} catch (PartInitException e) {
-					showDetailedError(e);
-				}				
+				highlightCodeForSelection();				
 			}
 		};
 
@@ -473,14 +452,11 @@ public class DuplicationRefactoringView extends ViewPart {
 					if (!checkFileIsSaved()) {
 						return;
 					}
-					ItemSet selectedItemSet = getSelectedItemSet();
-					if (selectedItemSet != null) {
-						try {
-							MixinMigrationRefactoring refactoring = new MixinMigrationRefactoring(selectedItemSet, selectedFile, PreprocessorType.LESS);
-							showRefactoringWizard(refactoring);
-						} catch (ParseException parseException) {
-							showDetailedError(parseException);
-						}
+					DuplicationInfo selectedDuplicationInfo = getSelectedDuplicationInfo();
+					if (selectedDuplicationInfo != null) {
+						MixinMigrationRefactoring refactoring = new MixinMigrationRefactoring(selectedDuplicationInfo, selectedFile, PREPROCESSOR_TYPE);
+						showRefactoringWizard(refactoring);
+						// showDetailedError(parseException);
 					}
 				}
 			}
@@ -494,10 +470,11 @@ public class DuplicationRefactoringView extends ViewPart {
 					if (!checkFileIsSaved()) {
 						return;
 					}
-					ItemSet selectedItemSet = getSelectedItemSet();
-					if (selectedItemSet != null) {
+					DuplicationInfo selectedDuplicationInfo = getSelectedDuplicationInfo();
+					if (selectedDuplicationInfo != null) {
+						ItemSet selectedItemSet = selectedDuplicationInfo.getItemSet();
 						if (!selectedItemSet.containsDifferencesInValues()) {
-							DuplicationRefactoring refactoring = new GroupingRefactoring(selectedItemSet, selectedFile);
+							DuplicationRefactoring refactoring = new GroupingRefactoring(selectedDuplicationInfo, selectedFile);
 							showRefactoringWizard(refactoring);
 						}
 					}
@@ -534,9 +511,9 @@ public class DuplicationRefactoringView extends ViewPart {
 		clearResultsAction.setEnabled(false);
 	}
 	
-	private void fillTableViewer(List<ItemSet> itemSets) {
-		viewer.setContentProvider(new DuplicationViewContentProvider(itemSets));
-		if (itemSets != null && !itemSets.isEmpty()) {
+	private void fillTableViewer(List<DuplicationInfo> duplicationInfo) {
+		viewer.setContentProvider(new DuplicationViewContentProvider(duplicationInfo));
+		if (duplicationInfo != null && !duplicationInfo.isEmpty()) {
 			clearResultsAction.setEnabled(true);
 		} else {
 			clearResultsAction.setEnabled(false);
@@ -558,7 +535,6 @@ public class DuplicationRefactoringView extends ViewPart {
 			currentAnnotations = annotations;
 			for (CSSAnnotation annotation : annotations) {
 				annotationModel.addAnnotation(annotation, annotation.getPosition());
-				clearAnnotationsAction.setEnabled(true);
 			}
 			if (annotations.size() > 0) {
 				clearAnnotationsAction.setEnabled(true);
@@ -577,15 +553,15 @@ public class DuplicationRefactoringView extends ViewPart {
 			IEditorReference editorReference = getEditorReferenceForIFileIfOpened(selectedFile);
 			if (editorReference != null) {
 				StructuredTextEditor ste = (StructuredTextEditor)editorReference.getEditor(false);
-				List<ItemSet> itemSets = ((DuplicationViewContentProvider)viewer.getContentProvider()).allItemSets;
-				fileToResultsMap.put(selectedFile, new ResultsStorage(selectedFile, itemSets, currentAnnotations));
+				List<DuplicationInfo> duplicationInfoList = ((DuplicationViewContentProvider)viewer.getContentProvider()).duplicationInfoList;
+				fileToResultsMap.put(selectedFile, new ResultsStorage(selectedFile, duplicationInfoList, currentAnnotations));
 				clearResults(ste);
 			}
 		}
 		if (file != null) {
 			if (fileToResultsMap.containsKey(file)) {
 				ResultsStorage resultsStorage = fileToResultsMap.get(file);
-				fillTableViewer(resultsStorage.getItemSets());
+				fillTableViewer(resultsStorage.getDuplicationInfoList());
 				IEditorReference editorReference = getEditorReferenceForIFileIfOpened(file);
 				if (editorReference != null) {
 					StructuredTextEditor ste = (StructuredTextEditor)editorReference.getEditor(false);
@@ -606,7 +582,6 @@ public class DuplicationRefactoringView extends ViewPart {
 						try {
 							CSSParser parser = CSSParserFactory.getCSSParser(CSSParserType.LESS);
 							StyleSheet styleSheet = parser.parseExternalCSS(selectedFile.getLocation().toOSString());
-							styleSheet = styleSheet.getStyleSheetWithIntraSelectorDependenciesRemoved();
 							final DuplicationDetector duplicationDetector = new DuplicationDetector(styleSheet);
 							if (allowDifferencesInValues) {
 								duplicationDetector.findPropertyDuplications();
@@ -614,16 +589,17 @@ public class DuplicationRefactoringView extends ViewPart {
 								duplicationDetector.findDuplications();
 							}
 
-							final List<ItemSetList> fpgrowthResults = duplicationDetector.fpGrowth(2, false);
-							List<ItemSet> allItemSets = new ArrayList<>();
+							final List<ItemSetList> fpgrowthResults = duplicationDetector.fpGrowth(2, true);
+							
+							List<DuplicationInfo> duplicationInfo = new ArrayList<>();
 
 							for (ItemSetList isl : fpgrowthResults)
 								for (ItemSet itemSet : isl)
-									allItemSets.add(itemSet);
+									duplicationInfo.add(new DuplicationInfo(styleSheet, PREPROCESSOR_TYPE, itemSet));
 							
 							Display.getDefault().asyncExec(new Runnable() {
 								public void run() {
-									if (allItemSets.isEmpty()) {
+									if (duplicationInfo.isEmpty()) {
 										String title = LocalizedStrings.get(Keys.NO_DUPLICATIONS_FOUND_TITLE);
 										String message = LocalizedStrings.get(Keys.NO_DUPLICATIONS_FOUND);
 										if (!allowDifferencesInValues) {
@@ -631,7 +607,7 @@ public class DuplicationRefactoringView extends ViewPart {
 										}
 										MessageDialog.openInformation(getSite().getShell(), title, message);
 									}
-									fillTableViewer(allItemSets);
+									fillTableViewer(duplicationInfo);
 								}
 							});	
 
@@ -711,11 +687,11 @@ public class DuplicationRefactoringView extends ViewPart {
 		return true;
 	}
 
-	private ItemSet getSelectedItemSet() {
+	private DuplicationInfo getSelectedDuplicationInfo() {
 		ISelection selection = viewer.getSelection();
 		if (!selection.isEmpty()) {
-			ItemSet selectedItemSet = (ItemSet)((IStructuredSelection)selection).getFirstElement();
-			return selectedItemSet;
+			DuplicationInfo selectedRowInfo = (DuplicationInfo)((IStructuredSelection)selection).getFirstElement();
+			return selectedRowInfo;
 		}
 		return null;
 	}
@@ -752,5 +728,42 @@ public class DuplicationRefactoringView extends ViewPart {
 	private boolean hasStyleSheetExtension(IFile file) {
 		String fileExtension = file.getFileExtension().toLowerCase();
 		return "css".equals(fileExtension) || "less".equals(fileExtension);
+	}
+
+	private void highlightCodeForSelection() {
+		ItemSet selectedItemSet = getSelectedDuplicationInfo().getItemSet();
+		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+		try {
+			StructuredTextEditor ste = (StructuredTextEditor)IDE.openEditor(page, selectedFile);
+			Set<Declaration> declarationsToAnnotate = new HashSet<>();
+			clearAnnotations(ste);
+			for(Item item : selectedItemSet) {
+				for (Declaration declaration : item) {
+					if (selectedItemSet.supportContains(declaration.getSelector())) {
+						//TODO: more tests
+						if (declaration instanceof ShorthandDeclaration && ((ShorthandDeclaration) declaration).isVirtual()) {
+							ShorthandDeclaration shorthandDeclaration = (ShorthandDeclaration) declaration;
+							for (Declaration individualDeclaration : shorthandDeclaration.getIndividualDeclarations()) {
+								declarationsToAnnotate.add(individualDeclaration);
+							}
+						} else {
+							declarationsToAnnotate.add(declaration);
+						}
+					}
+				}
+			}
+			
+			List<CSSAnnotation> annotations = new ArrayList<>();
+			for (Declaration declaration : declarationsToAnnotate) {
+				Position position = new Position(declaration.getLocationInfo().getOffset(), declaration.getLocationInfo().getLength());
+				CSSAnnotation cssAnnotation = new CSSAnnotation(CSSAnnotationType.DUPLICATION, 
+						"Duplicated " + declaration.getProperty(),
+						position);
+				annotations.add(cssAnnotation);
+			}
+			setAnnotations(annotations, ste);
+		} catch (PartInitException e) {
+			showDetailedError(e);
+		}
 	}
 }
