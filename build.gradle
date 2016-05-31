@@ -1,0 +1,10 @@
+/*
+	Created by Davood Mazinanian 30 May 2016
+*/
+
+task buildAndCopyLibs(type: Copy) {
+    into "$buildDir/../libs"
+    from "$buildDir/../../css-analyser/build/libs"
+}
+
+buildAndCopyLibs.dependsOn(":css-analyser:build")
