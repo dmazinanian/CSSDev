@@ -41,7 +41,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	
 	public static final String REFACTORING_ID = "ca.concordia.cssanalyser.plugin.extractMixin";
 	
-	private final MixinMigrationOpportunity<?> mixinMigrationOpportunity;
+	private MixinMigrationOpportunity<?> mixinMigrationOpportunity;
 	
 	public MixinMigrationRefactoring(DuplicationInfo duplicationInfo, IFile sourceFile, PreprocessorType preprocessorType) {
 		super(duplicationInfo, sourceFile);
@@ -51,16 +51,17 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor arg0)
 			throws CoreException, OperationCanceledException {
-		return new RefactoringStatus();
+		RefactoringStatus refactoringStatus = new RefactoringStatus();
+		if (!this.mixinMigrationOpportunity.preservesPresentation()) {
+			refactoringStatus.addError(LocalizedStrings.get(Keys.BREAK_PRESENTATION_ERROR));
+		}
+		return refactoringStatus;
 	}
 
 	@Override
 	public RefactoringStatus checkInitialConditions(IProgressMonitor arg0)
 			throws CoreException, OperationCanceledException {
 		RefactoringStatus refactoringStatus = new RefactoringStatus();
-		if (!this.mixinMigrationOpportunity.preservesPresentation()) {
-			refactoringStatus.addError(LocalizedStrings.get(Keys.BREAK_PRESENTATION_ERROR));
-		}
 		return refactoringStatus;
 	}
 
@@ -249,6 +250,10 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 
 	public MixinMigrationOpportunity<?> getMixinMigrationOpportunity() {
 		return mixinMigrationOpportunity;
+	}
+
+	public void setMixinMigrationOpportunity(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
+		this.mixinMigrationOpportunity = mixinMigrationOpportunity;
 	}
 
 }
