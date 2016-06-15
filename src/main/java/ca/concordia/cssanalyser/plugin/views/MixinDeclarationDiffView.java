@@ -3,6 +3,7 @@ package ca.concordia.cssanalyser.plugin.views;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +28,8 @@ import ca.concordia.cssanalyser.plugin.views.ExtendedCheckBox.ExtendedCheckboxSe
 
 public class MixinDeclarationDiffView extends Composite {
 	
-	static final Color BACKGROUND_COLOR = new Color(Display.getCurrent(), 255, 255, 255);
+	static final Color BACKGROUND_COLOR = PreferencesUtil.getTextEditorBackgroundColor();
+	static final Color DIFFERENCE_BACKGROUND_COLOR = new Color(Display.getCurrent(), 255, 250, 200);
 	static final Color SELECTOR_COLOR = PreferencesUtil.getCSSColor(ColorConstants.SELECTOR);
 	static final Color PROPERTY_FOREGROUND_COLOR = PreferencesUtil.getCSSColor(ColorConstants.PROPERY);
 	static final Color LITERAL_COLOR = PreferencesUtil.getCSSColor(ColorConstants.LITERAL);
@@ -67,7 +69,7 @@ public class MixinDeclarationDiffView extends Composite {
 		new ExtractMixinMixinPropertyToolTip(mixinPropertyCheckBox.getPropertyLabel().getPropertyLabel().getUnderlayingLabel(), mixinDeclaration);
 		mixinPropertyCheckBox.setBackground(BACKGROUND_COLOR);
 				
-		List<PropertyAndLayer> propertiesAndLayers = new ArrayList<>();
+		Map<PropertyAndLayer, MixinValue> propertiesAndLayers = new LinkedHashMap<>();
 		for (MixinValue value : mixinDeclaration.getMixinValues()) {
 			Color valueColor = NORMAL_TEXT_COLOR;
 			if (value instanceof MixinLiteral)
@@ -75,7 +77,7 @@ public class MixinDeclarationDiffView extends Composite {
 			ValueLabel mixinDeclarationValueLabel = new MixinDeclarationValueLabel(this, valueColor, true, value);
 			new ExtractMixinMixinValueToolTip(mixinDeclarationValueLabel.getUnderlayingLabel(), mixinDeclaration, value);
 			mixinDeclarationValueLabel.setBackground(BACKGROUND_COLOR);
-			propertiesAndLayers.add(mixinDeclaration.getPropertyAndLayerForMixinValue(value));
+			propertiesAndLayers.put(mixinDeclaration.getPropertyAndLayerForMixinValue(value), value);
 			mixinPropertyCheckBox.addDeclarationValueLabel(mixinDeclarationValueLabel);
 			if (value instanceof MixinParameter) {
 				mixinParametersLabels.add(mixinDeclarationValueLabel);
@@ -102,10 +104,15 @@ public class MixinDeclarationDiffView extends Composite {
 			GridData layoutData = new GridData();
 			layoutData.horizontalIndent = 20;
 			declarationPropertyLabel.setLayoutData(layoutData);
-			for (PropertyAndLayer propertyAndLayer : propertiesAndLayers) {
+			for (PropertyAndLayer propertyAndLayer : propertiesAndLayers.keySet()) {
 				Collection<DeclarationValue> values = declaration.getDeclarationValuesForStyleProperty(propertyAndLayer); 
 				ValueLabel valueLabel = new DeclarationValueLabel(this, LITERAL_COLOR, false, values);
-				valueLabel.setBackground(BACKGROUND_COLOR);
+				if (propertiesAndLayers.get(propertyAndLayer) instanceof MixinParameter) {
+					valueLabel.setBackground(DIFFERENCE_BACKGROUND_COLOR);	
+				} else {
+					valueLabel.setBackground(BACKGROUND_COLOR);	
+				}
+				
 				new ExtractMixinDeclarationValueTooltip(valueLabel.getUnderlayingLabel(), declaration, values);
 				declarationPropertyLabel.addDeclarationValueLabel(valueLabel);
 			}
