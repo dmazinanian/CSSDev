@@ -59,7 +59,6 @@ public class MixinDeclarationDiffView extends Composite {
 		GridLayout layout = new GridLayout(mixinDeclaration.getAllSetPropertyAndLayers().size() + 1, false);
 		layout.horizontalSpacing = 10;
 		layout.verticalSpacing = 0;
-		layout.marginWidth = 0;
 		this.setLayout(layout);
 	}
 	

@@ -2,24 +2,20 @@ package ca.concordia.cssanalyser.plugin.utility;
 
 import java.util.Iterator;
 
+import org.eclipse.core.resources.IFile;
+
 import ca.concordia.cssanalyser.analyser.duplication.items.Item;
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
-import ca.concordia.cssanalyser.cssmodel.StyleSheet;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
-import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorMigrationOpportunitiesDetectorFactory;
-import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorType;
-import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 
 public class DuplicationInfo {
 	
 	private final ItemSet itemSet;
-	private final PreprocessorType preprocessorType;
-	private StyleSheet styleSheet;
+	private final IFile iFile;
 	
-	public DuplicationInfo(StyleSheet styleSheet, PreprocessorType preprocessorType, ItemSet itemSet) {
-		this.styleSheet = styleSheet;
-		this.preprocessorType = preprocessorType;
+	public DuplicationInfo(ItemSet itemSet, IFile iFile) {
 		this.itemSet = itemSet;
+		this.iFile = iFile;
 	}
 
 	public String getSelectorNames() {
@@ -51,8 +47,8 @@ public class DuplicationInfo {
 		return -1;
 	}
 
-	public MixinMigrationOpportunity<?> geMixinMigrationOpportunity() {
-		return PreprocessorMigrationOpportunitiesDetectorFactory.get(preprocessorType, styleSheet).getMixinOpportunityFromItemSet(itemSet);
+	public IFile getSourceIFile() {
+		return this.iFile;
 	}
 
 	public ItemSet getItemSet() {

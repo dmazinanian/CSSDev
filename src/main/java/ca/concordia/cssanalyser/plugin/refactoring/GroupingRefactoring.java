@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -40,12 +39,12 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	
 	private final CSSValueOverridingDependencyList dependenciesToHold;
 	
-	public GroupingRefactoring(DuplicationInfo duplicationInfo, IFile selectedFile) {
-		this(duplicationInfo, null, selectedFile);
+	public GroupingRefactoring(DuplicationInfo duplicationInfo) {
+		this(duplicationInfo, null);
 	}
 
-	public GroupingRefactoring(DuplicationInfo duplicationInfo, CSSValueOverridingDependencyList dependenciesToHold, IFile selectedFile) {
-		super(duplicationInfo, selectedFile);
+	public GroupingRefactoring(DuplicationInfo duplicationInfo, CSSValueOverridingDependencyList dependenciesToHold) {
+		super(duplicationInfo);
 		this.dependenciesToHold = dependenciesToHold;
 	}
 
@@ -69,13 +68,13 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		Set<Declaration> declarationsToRemove = itemSet.getDeclarationsToBeRemoved();
 		GroupingSelector newGrouping = itemSet.getGroupingSelector();
 		String newGroupingSelectorText = getSelectorText(newGrouping, System.lineSeparator());
-		TextFileChange result = new TextFileChange(sourceFile.getName(), sourceFile);
+		TextFileChange result = new TextFileChange(duplicationInfo.getSourceIFile().getName(), duplicationInfo.getSourceIFile());
 	    // Add the root
 	    MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
 	    result.setEdit(fileChangeRootEdit);    
 	    String fileContents;
 		try {
-			fileContents = IOHelper.readFileToString(sourceFile.getLocation().toOSString());
+			fileContents = IOHelper.readFileToString(duplicationInfo.getSourceIFile().getLocation().toOSString());
 		    
 		    OffsetLengthList offsetsAndLengths = new OffsetLengthList();
 		    
@@ -125,7 +124,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    		String description = String.format(LocalizedStrings.get(Keys.GROUP_DECLARATIONS_IN_SELECTORS), 
 	    				duplicationInfo.getDeclarationNames(),
 	    				duplicationInfo.getSelectorNames());
-	    		return new RefactoringChangeDescriptor(new GroupingRefactoringDescriptor(description, null, duplicationInfo, sourceFile));
+	    		return new RefactoringChangeDescriptor(new GroupingRefactoringDescriptor(duplicationInfo, description, null));
 	    	}
 	    };
 	    progressMonitor.done();

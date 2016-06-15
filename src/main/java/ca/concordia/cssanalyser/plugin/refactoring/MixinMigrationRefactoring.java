@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -28,10 +27,8 @@ import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
-import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorType;
 import ca.concordia.cssanalyser.migration.topreprocessors.less.LessMixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
-import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
@@ -41,23 +38,18 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	
 	public static final String REFACTORING_ID = "ca.concordia.cssanalyser.plugin.extractMixin";
 	
-	private MixinMigrationOpportunity<?> mixinMigrationOpportunity;
-
 	private final MixinDiffWizardPage mixinDiffWizardPage;
 	
-	public MixinMigrationRefactoring(DuplicationInfo duplicationInfo, IFile sourceFile, PreprocessorType preprocessorType) {
-		super(duplicationInfo, sourceFile);
-		mixinMigrationOpportunity = duplicationInfo.geMixinMigrationOpportunity();
-		mixinDiffWizardPage = new MixinDiffWizardPage(mixinMigrationOpportunity);
+	public MixinMigrationRefactoring(MixinDuplicationInfo duplicationInfo) {
+		super(duplicationInfo);
+		mixinDiffWizardPage = new MixinDiffWizardPage(duplicationInfo);
 	}
 
 	@Override
 	public RefactoringStatus checkFinalConditions(IProgressMonitor arg0)
 			throws CoreException, OperationCanceledException {
 		RefactoringStatus refactoringStatus = new RefactoringStatus();
-		MixinMigrationOpportunity<?> finalMigrationOpportunity = 
-				mixinMigrationOpportunity.getSubOpportunity(mixinDiffWizardPage.getSelectedProperties(), mixinDiffWizardPage.getSelectedSelectors());
-		if (!finalMigrationOpportunity.preservesPresentation()) {
+		if (!((MixinDuplicationInfo)duplicationInfo).getMixinMigrationOpportunity().preservesPresentation()) {
 			refactoringStatus.addError(LocalizedStrings.get(Keys.BREAK_PRESENTATION_ERROR));
 		}
 		return refactoringStatus;
@@ -73,15 +65,15 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	@Override
 	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
 		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
-		TextFileChange resultingChange = new TextFileChange(sourceFile.getName(), sourceFile);
+		TextFileChange resultingChange = new TextFileChange(duplicationInfo.getSourceIFile().getName(), duplicationInfo.getSourceIFile());
 		MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
 		resultingChange.setEdit(fileChangeRootEdit);
-		MixinMigrationOpportunity<?> finalMigrationOpportunity = 
-				mixinMigrationOpportunity.getSubOpportunity(mixinDiffWizardPage.getSelectedProperties(), mixinDiffWizardPage.getSelectedSelectors());
+
+		MixinMigrationOpportunity<?> mixinMigrationOpportunity = ((MixinDuplicationInfo)duplicationInfo).getMixinMigrationOpportunity();
 		try {
-			String fileContents = IOHelper.readFileToString(sourceFile.getLocation().toOSString());
+			String fileContents = IOHelper.readFileToString(duplicationInfo.getSourceIFile().getLocation().toOSString());
 			
-			String newMixinString = finalMigrationOpportunity.toString();
+			String newMixinString = mixinMigrationOpportunity.toString();
 			if (fileContents.charAt(fileContents.length() - 1) == '}')
 				newMixinString = System.lineSeparator() + System.lineSeparator() + newMixinString;
 			
@@ -89,7 +81,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			
 			// 1- Remove the declarations being parameterized
 			//Set<Declaration> realDeclarationsToRemove = getRealDeclarationsToRemove(this.mixinMigrationOpportunity.getDeclarationsToBeRemoved());
-			Iterable<Declaration> realDeclarationsToRemove = finalMigrationOpportunity.getDeclarationsToBeRemoved();
+			Iterable<Declaration> realDeclarationsToRemove = mixinMigrationOpportunity.getDeclarationsToBeRemoved();
 			for (Declaration declarationToRemove : realDeclarationsToRemove) {
 				LocationInfo locationInfo = declarationToRemove.getLocationInfo();
 	    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
@@ -106,7 +98,7 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			
 			// Add declarations if necessary
 			List<InsertEdit> insertEdits = new ArrayList<>();
-			for (Declaration declaration : finalMigrationOpportunity.getDeclarationsToBeAdded()) {
+			for (Declaration declaration : mixinMigrationOpportunity.getDeclarationsToBeAdded()) {
 				Selector parentSelector = declaration.getSelector();
 				int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(parentSelector);
 				String declarationString = PreferencesUtil.getTabString() + declaration.toString() + ";" + System.lineSeparator();
@@ -122,29 +114,29 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			// 3- Add the new Mixin 
 			InsertEdit newMixinInsertEdit = new InsertEdit(fileContents.length(), newMixinString);	 
 			fileChangeRootEdit.addChild(newMixinInsertEdit);
-			resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), finalMigrationOpportunity.getMixinName()),
+			resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), mixinMigrationOpportunity.getMixinName()),
 					newMixinInsertEdit));
 
 			// 4- Add Mixin calls to the involved selectors
-			for (Selector involvedSelector : finalMigrationOpportunity.getInvolvedSelectors()) {									
-				String mixinCallString = finalMigrationOpportunity.getMixinReferenceString(involvedSelector);
+			for (Selector involvedSelector : mixinMigrationOpportunity.getInvolvedSelectors()) {									
+				String mixinCallString = mixinMigrationOpportunity.getMixinReferenceString(involvedSelector);
 				mixinCallString = PreferencesUtil.getTabString() + mixinCallString + System.lineSeparator();
 				try {
-					Declaration[] positionsMap = finalMigrationOpportunity.getMixinCallPosition(involvedSelector);
+					Declaration[] positionsMap = mixinMigrationOpportunity.getMixinCallPosition(involvedSelector);
 
 					if (positionsMap == null) { // don't touch anything, just add the call to the end
 						int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(involvedSelector);
 						InsertEdit insertNewMixinCall = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);
 						fileChangeRootEdit.addChild(insertNewMixinCall);
-						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), finalMigrationOpportunity.getMixinName()),
+						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), mixinMigrationOpportunity.getMixinName()),
 								insertNewMixinCall));
 					} else {
 						TextEditGroup addAndReOrderEditGroup = new TextEditGroup(
 								String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL_REORDER_DECLARTIONS), 
-										finalMigrationOpportunity.getMixinName(), involvedSelector));
+										mixinMigrationOpportunity.getMixinName(), involvedSelector));
 						// Remove all declarations
 						for (Declaration declaration : involvedSelector.getDeclarations()) {
-							Set<Declaration> involvedDeclarations = finalMigrationOpportunity.getInvolvedDeclarations(involvedSelector);
+							Set<Declaration> involvedDeclarations = mixinMigrationOpportunity.getInvolvedDeclarations(involvedSelector);
 							if (!involvedDeclarations.contains(declaration)) {
 								OffsetLength expandedAreaToRemove = RefactoringUtil.expandAreaToRemove(fileContents, declaration.getLocationInfo());
 								DeleteEdit deleteEdit = new DeleteEdit(expandedAreaToRemove.getOffset(), expandedAreaToRemove.getLength());
@@ -182,13 +174,11 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	    	@Override
 	    	public ChangeDescriptor getDescriptor() {
 	    		String description = String.format(LocalizedStrings.get(Keys.EXTRACT_MIXIN_FROM_DECLARATIONS_IN_SELECTORS),
-	    				finalMigrationOpportunity.getMixinName(),
+	    				mixinMigrationOpportunity.getMixinName(),
 	    				duplicationInfo.getDeclarationNames(),
 	    				duplicationInfo.getSelectorNames());
 	    		MixinMigrationRefactoringDescriptor refactoringDescriptor = 
-	    				new MixinMigrationRefactoringDescriptor(description, null, duplicationInfo, sourceFile, 
-	    						finalMigrationOpportunity.getMixinName(),
-	    						finalMigrationOpportunity.getPreprocessorType());
+	    				new MixinMigrationRefactoringDescriptor((MixinDuplicationInfo)duplicationInfo, description, null);
 				return new RefactoringChangeDescriptor(refactoringDescriptor);
 	    	}
 	    };
@@ -244,22 +234,10 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	public String getName() {
 		return "Extract Mixin";
 	}
-	
-	public void setMixinName(String mixinName) {
-		mixinMigrationOpportunity.setMixinName(mixinName);
-	}
 
 	@Override
 	public UserInputWizardPage getUserInputPage() {
 		return mixinDiffWizardPage;
 	}
-
-	public MixinMigrationOpportunity<?> getMixinMigrationOpportunity() {
-		return mixinMigrationOpportunity;
-	}
-
-	public void setMixinMigrationOpportunity(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
-		this.mixinMigrationOpportunity = mixinMigrationOpportunity;
-	}
-
+	
 }

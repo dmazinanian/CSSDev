@@ -93,6 +93,7 @@ import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
 import ca.concordia.cssanalyser.plugin.refactoring.GroupingRefactoring;
+import ca.concordia.cssanalyser.plugin.refactoring.MixinDuplicationInfo;
 import ca.concordia.cssanalyser.plugin.refactoring.MixinMigrationRefactoring;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
@@ -454,7 +455,8 @@ public class DuplicationRefactoringView extends ViewPart {
 					}
 					DuplicationInfo selectedDuplicationInfo = getSelectedDuplicationInfo();
 					if (selectedDuplicationInfo != null) {
-						MixinMigrationRefactoring refactoring = new MixinMigrationRefactoring(selectedDuplicationInfo, selectedFile, PREPROCESSOR_TYPE);
+						MixinDuplicationInfo selectedMixinDuplicationInfo = new MixinDuplicationInfo(selectedDuplicationInfo, PREPROCESSOR_TYPE);
+						MixinMigrationRefactoring refactoring = new MixinMigrationRefactoring(selectedMixinDuplicationInfo);
 						showRefactoringWizard(refactoring);
 						// showDetailedError(parseException);
 					}
@@ -474,7 +476,7 @@ public class DuplicationRefactoringView extends ViewPart {
 					if (selectedDuplicationInfo != null) {
 						ItemSet selectedItemSet = selectedDuplicationInfo.getItemSet();
 						if (!selectedItemSet.containsDifferencesInValues()) {
-							DuplicationRefactoring refactoring = new GroupingRefactoring(selectedDuplicationInfo, selectedFile);
+							DuplicationRefactoring refactoring = new GroupingRefactoring(selectedDuplicationInfo);
 							showRefactoringWizard(refactoring);
 						}
 					}
@@ -595,7 +597,7 @@ public class DuplicationRefactoringView extends ViewPart {
 
 							for (ItemSetList isl : fpgrowthResults)
 								for (ItemSet itemSet : isl)
-									duplicationInfo.add(new DuplicationInfo(styleSheet, PREPROCESSOR_TYPE, itemSet));
+									duplicationInfo.add(new DuplicationInfo(itemSet, selectedFile));
 							
 							Display.getDefault().asyncExec(new Runnable() {
 								public void run() {

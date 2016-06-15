@@ -31,6 +31,7 @@ import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinDeclaration;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinParameter;
+import ca.concordia.cssanalyser.plugin.refactoring.MixinDuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
@@ -39,20 +40,22 @@ import ca.concordia.cssanalyser.plugin.views.MixinDeclarationDiffView.MixinDecla
 
 public class MixinDiffWizardPage extends UserInputWizardPage {
 
-	private final MixinMigrationOpportunity<?> mixinMigrationOpportunity;
 	private final Set<String> checkedProperties;
 	private final Set<Selector> checkedSelectors;
 	private final List<MixinDeclarationDiffView> mixinDeclarationsViews;
+	private final MixinDuplicationInfo duplicationInfo;
 	
 	private Text mixinNameText;
 	private Table parametersTable;
 	
-	public MixinDiffWizardPage(MixinMigrationOpportunity<?> mixinMigrationOpportunity) {
+	
+	public MixinDiffWizardPage(MixinDuplicationInfo duplicationInfo) {
 		super(LocalizedStrings.get(Keys.EXTRACT_MIXIN));
-		this.mixinMigrationOpportunity = mixinMigrationOpportunity;
+		this.duplicationInfo = duplicationInfo;
 		this.checkedProperties = new HashSet<>();
 		this.checkedSelectors = new HashSet<>();
 		this.mixinDeclarationsViews = new ArrayList<>();
+		MixinMigrationOpportunity<?> mixinMigrationOpportunity = duplicationInfo.getOriginalMixinMigrationOpportunity();
 		for (MixinDeclaration mixinDeclaration : mixinMigrationOpportunity.getAllMixinDeclarations()) {
 			this.checkedProperties.add(mixinDeclaration.getPropertyName());
 		}
@@ -70,7 +73,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		pageContents.setLayout(gridLayout);
 		
 		createMixinNameArea(pageContents);
-		if (mixinMigrationOpportunity.getNumberOfParameters() > 0) {
+		if (duplicationInfo.getOriginalMixinMigrationOpportunity().getNumberOfParameters() > 0) {
 			createParametersTable(pageContents);
 		}
 		createSelectorsArea(pageContents);
@@ -87,7 +90,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		new Label(mixinNameBar, SWT.NONE).setText(LocalizedStrings.get(Keys.MIXIN_NAME) + ":");
 		
 		mixinNameText = new Text(mixinNameBar, SWT.BORDER);
-		mixinNameText.setText(mixinMigrationOpportunity.getMixinName());
+		mixinNameText.setText(duplicationInfo.getOriginalMixinMigrationOpportunity().getMixinName());
 		mixinNameText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		mixinNameText.addModifyListener(new ModifyListener() {
 			@Override
@@ -101,7 +104,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		Group tableParentGroup = new Group(pageContents, SWT.NONE);
 		tableParentGroup.setText(LocalizedStrings.get(Keys.MIXIN_PARAMETERS));
 		tableParentGroup.setLayout(new GridLayout());
-		GridData layoutData = new GridData(SWT.FILL, SWT.TOP, true, false);
+		GridData layoutData = new GridData(SWT.FILL, SWT.FILL, true, false);
 		layoutData.widthHint = 200;
 		tableParentGroup.setLayoutData(layoutData);
 		
@@ -113,15 +116,11 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		TableViewer viewer = new TableViewer(tableParentComposite, SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
 		parametersTable = viewer.getTable();
 		parametersTable.setLinesVisible(true);
-		parametersTable.setHeaderVisible(true);
+		//parametersTable.setHeaderVisible(true);
 		
 		TableColumn parameterNameColumn = new TableColumn(parametersTable, SWT.NONE);
 		parameterNameColumn.setText(LocalizedStrings.get(Keys.MIXIN_PARAMETER));
-		for (MixinParameter mixinParameter : mixinMigrationOpportunity.getParameters()) {
-			TableItem item = new TableItem(parametersTable, SWT.NONE);
-			item.setData(mixinParameter);
-			item.setText(0, mixinParameter.getName());
-		}
+		populateParametersTable();
 		tableLayout.setColumnData(parameterNameColumn, new ColumnWeightData(1, 100, true));
 		
 		viewer.setColumnProperties(new String[]{ LocalizedStrings.get(Keys.MIXIN_PARAMETER) });
@@ -145,15 +144,30 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		});
 	}
 
+	private void populateParametersTable() {
+		parametersTable.removeAll();
+		for (MixinParameter mixinParameter : duplicationInfo.getMixinMigrationOpportunity().getParameters()) {
+			TableItem item = new TableItem(parametersTable, SWT.NONE);
+			item.setData(mixinParameter);
+			item.setText(0, mixinParameter.getName());
+		}
+		parametersTable.pack();
+		parametersTable.getParent().layout();
+	}
+
 	private void createSelectorsArea(Composite pageContents) {
 		Group selectorsGroup = new Group(pageContents, SWT.NONE);
 		selectorsGroup.setText(LocalizedStrings.get(Keys.SELECTORS));
 		selectorsGroup.setLayout(new GridLayout());
 		selectorsGroup.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-		selectorsGroup.setBackground(PreferencesUtil.getTextEditorBackgroundColor());
+		
+		Composite selectorsComposite = new Composite(selectorsGroup, SWT.NONE);
+		selectorsComposite.setLayout(new GridLayout());
+		selectorsComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		selectorsComposite.setBackground(PreferencesUtil.getTextEditorBackgroundColor());
 		
 		for (Selector selector : checkedSelectors) {
-			SelectorCheckBox selectorCheckBox = new SelectorCheckBox(selectorsGroup, selector.toString(), true);
+			SelectorCheckBox selectorCheckBox = new SelectorCheckBox(selectorsComposite, selector.toString(), true);
 			selectorCheckBox.setSelection(true);
 			selectorCheckBox.setBackground(PreferencesUtil.getTextEditorBackgroundColor());
 			selectorCheckBox.addCheckBoxSelectionListener(new ExtendedCheckboxSelectionListener() {
@@ -185,20 +199,23 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		declarationsContainer.setLayout(new GridLayout());
 		declarationsContainer.setSize(declarationsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		scrolledComposite.setContent(declarationsContainer);
-		for (MixinDeclaration mixinDeclaration : mixinMigrationOpportunity.getAllMixinDeclarations()) {
+		for (MixinDeclaration mixinDeclaration : duplicationInfo.getOriginalMixinMigrationOpportunity().getAllMixinDeclarations()) {
 			MixinDeclarationDiffView mixinDeclarationDiffView = new MixinDeclarationDiffView(declarationsContainer, mixinDeclaration);
 			mixinDeclarationDiffView.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, true));
 			mixinDeclarationDiffView.addMixinDeclarationSelectionListener(new MixinDeclarationSelectionListener() {
 				@Override
 				public void mixinDeclarationSelectionChanged(MixinDeclaration mixinDeclaration, boolean selected) {
+					MixinMigrationOpportunity<?> originalMixinMigrationOpportunity = duplicationInfo.getOriginalMixinMigrationOpportunity();
 					if (selected) {
 						checkedProperties.add(mixinDeclaration.getPropertyName());
-						for (Selector selector : mixinMigrationOpportunity.getInvolvedSelectors()) {
+						for (Selector selector : originalMixinMigrationOpportunity.getInvolvedSelectors()) {
 							mixinDeclarationDiffView.setDeclarationSelected(selector, checkedSelectors.contains(selector));
 						}
 					} else {
 						checkedProperties.remove(mixinDeclaration.getPropertyName());
 					}
+					duplicationInfo.setMixinMigrationOpportunity(originalMixinMigrationOpportunity.getSubOpportunity(getSelectedProperties(), getSelectedSelectors()));
+					populateParametersTable();
 					setPageComplete(validatePage());
 				}
 			});
@@ -211,7 +228,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		
 		String newMixinName = mixinNameText.getText();
 		try {
-			mixinMigrationOpportunity.setMixinName(newMixinName);
+			duplicationInfo.getMixinMigrationOpportunity().setMixinName(newMixinName);
 		} catch (IllegalArgumentException nameException) {
 			setErrorMessage(String.format(LocalizedStrings.get(Keys.INVALID_MIXIN_NAME), newMixinName));
 			mixinNameText.forceFocus();
@@ -219,7 +236,7 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		}
 		
 		if (parametersTable != null) {
-			List<MixinParameter> parameters = (List<MixinParameter>)mixinMigrationOpportunity.getParameters();
+			List<MixinParameter> parameters = (List<MixinParameter>)duplicationInfo.getMixinMigrationOpportunity().getParameters();
 			TableItem[] tableItems = parametersTable.getItems();
 			boolean shouldUpdateTheView = false;
 			for (int i = 0; i < tableItems.length; i++) {
