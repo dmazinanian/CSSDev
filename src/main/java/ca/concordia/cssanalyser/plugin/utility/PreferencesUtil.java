@@ -11,12 +11,15 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.eclipse.ui.themes.ITheme;
 import org.eclipse.ui.themes.IThemeManager;
 
-public class PreferencesUtility {
+public class PreferencesUtil {
 
 	public enum ColorConstants {
 
 		PROPERY("PROPERTY_NAME"),
-		LITERAL("PROPERTY_VALUE");
+		LITERAL("PROPERTY_VALUE"),
+		SELECTOR("SELECTOR"),
+		AT_RULE("ATMARK_RULE"),
+		MEDIA("MEDIA");
 		
 		private String eclipseConstant;
 		

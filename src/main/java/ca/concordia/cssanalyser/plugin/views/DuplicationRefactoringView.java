@@ -313,10 +313,10 @@ public class DuplicationRefactoringView extends ViewPart {
 		column2.setResizable(true);
 		column2.pack();
 		
-		TableColumn column3 = new TableColumn(viewer.getTable(), SWT.LEFT);
-		column3.setText("Penalty"); //TODO
-		column3.setResizable(true);
-		column3.pack();
+		//TableColumn column3 = new TableColumn(viewer.getTable(), SWT.LEFT);
+		//column3.setText("Penalty"); //TODO
+		//column3.setResizable(true);
+		//column3.pack();
 		
 		viewer.setColumnProperties(new String[] {"declarations", "selectors", "penalty"});
 		viewer.getTable().setLayoutData(new GridData(GridData.FILL_BOTH));

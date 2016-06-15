@@ -31,7 +31,7 @@ import ca.concordia.cssanalyser.io.IOHelper;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.utility.PreferencesUtility;
+import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 
 public class GroupingRefactoring extends DuplicationRefactoring {
@@ -137,7 +137,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		selectorString.append(newGrouping.toString()).append(" {").append(newLineChar);		
 		for (Iterator<Declaration> iterator = newGrouping.getDeclarations().iterator(); iterator.hasNext();) {
 			Declaration declaration = iterator.next();
-			selectorString.append(PreferencesUtility.getTabString());
+			selectorString.append(PreferencesUtil.getTabString());
 			selectorString.append(declaration.toString());
 			if (iterator.hasNext())
 				selectorString.append(";").append(newLineChar);
