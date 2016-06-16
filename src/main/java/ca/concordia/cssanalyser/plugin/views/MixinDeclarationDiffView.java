@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
@@ -77,7 +78,10 @@ public class MixinDeclarationDiffView extends Composite {
 			ValueLabel mixinDeclarationValueLabel = new MixinDeclarationValueLabel(this, valueColor, true, value);
 			new ExtractMixinMixinValueToolTip(mixinDeclarationValueLabel.getUnderlayingLabel(), mixinDeclaration, value);
 			mixinDeclarationValueLabel.setBackground(BACKGROUND_COLOR);
-			propertiesAndLayers.put(mixinDeclaration.getPropertyAndLayerForMixinValue(value), value);
+			Set<PropertyAndLayer> propertyAndLayersForMixinValue = mixinDeclaration.getPropertyAndLayerForMixinValue(value);
+			for (PropertyAndLayer propertyAndLayerForMixinValue : propertyAndLayersForMixinValue) {
+				propertiesAndLayers.put(propertyAndLayerForMixinValue, value);
+			}
 			mixinPropertyCheckBox.addDeclarationValueLabel(mixinDeclarationValueLabel);
 			if (value instanceof MixinParameter) {
 				mixinParametersLabels.add(mixinDeclarationValueLabel);
@@ -106,6 +110,8 @@ public class MixinDeclarationDiffView extends Composite {
 			declarationPropertyLabel.setLayoutData(layoutData);
 			for (PropertyAndLayer propertyAndLayer : propertiesAndLayers.keySet()) {
 				Collection<DeclarationValue> values = declaration.getDeclarationValuesForStyleProperty(propertyAndLayer); 
+				if (values == null)
+					values = new ArrayList<>();
 				ValueLabel valueLabel = new DeclarationValueLabel(this, LITERAL_COLOR, false, values);
 				if (propertiesAndLayers.get(propertyAndLayer) instanceof MixinParameter) {
 					valueLabel.setBackground(DIFFERENCE_BACKGROUND_COLOR);	
