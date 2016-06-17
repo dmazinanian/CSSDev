@@ -197,7 +197,6 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		scrolledComposite.setExpandVertical(true);
 		Composite declarationsContainer = new Composite(scrolledComposite, SWT.NONE);
 		declarationsContainer.setLayout(new GridLayout());
-		declarationsContainer.setSize(declarationsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		scrolledComposite.setContent(declarationsContainer);
 		for (MixinDeclaration mixinDeclaration : duplicationInfo.getOriginalMixinMigrationOpportunity().getAllMixinDeclarations()) {
 			MixinDeclarationDiffView mixinDeclarationDiffView = new MixinDeclarationDiffView(declarationsContainer, mixinDeclaration);
