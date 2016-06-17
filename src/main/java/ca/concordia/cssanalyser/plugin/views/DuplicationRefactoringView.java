@@ -53,6 +53,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.ui.IActionBars;
@@ -119,6 +120,7 @@ public class DuplicationRefactoringView extends ViewPart {
 	private boolean liveDetection;
 	private List<CSSAnnotation> currentAnnotations = new ArrayList<>();
 	private Map<IFile, ResultsStorage> fileToResultsMap = new HashMap<>();
+	private Label numberOfOpportunitiesLabel;
 	
 	private IPropertyListener propertyListener = new IPropertyListener() {
 		@Override
@@ -356,10 +358,10 @@ public class DuplicationRefactoringView extends ViewPart {
 	
 	private void createBottomBar(Composite parent) {
 		Composite bottomBar = new Composite(parent, SWT.NONE);
-		GridLayout bottomBarLayout = new GridLayout();
-		bottomBarLayout.numColumns = 6;
+		GridLayout bottomBarLayout = new GridLayout(3, false);
 		bottomBarLayout.horizontalSpacing = 20;
 		bottomBar.setLayout(bottomBarLayout);
+		bottomBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 		
 		Button allowDifferencesInValuesButton = new Button(bottomBar, SWT.CHECK);
 		allowDifferencesInValuesButton.setText(LocalizedStrings.get(Keys.INCLUDE_DIFFERENCES));
@@ -378,6 +380,9 @@ public class DuplicationRefactoringView extends ViewPart {
 				liveDetection = liveDetectionButton.getSelection();
 			}
 		});
+		
+		numberOfOpportunitiesLabel = new Label(bottomBar, SWT.NONE);
+		numberOfOpportunitiesLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 	}
 
 	private void contributeToActionBars() {
@@ -511,15 +516,19 @@ public class DuplicationRefactoringView extends ViewPart {
 		if (forTextEditor != null)
 			clearAnnotations(forTextEditor);
 		clearResultsAction.setEnabled(false);
+		numberOfOpportunitiesLabel.setText("");
 	}
 	
 	private void fillTableViewer(List<DuplicationInfo> duplicationInfo) {
 		viewer.setContentProvider(new DuplicationViewContentProvider(duplicationInfo));
 		if (duplicationInfo != null && !duplicationInfo.isEmpty()) {
 			clearResultsAction.setEnabled(true);
+			numberOfOpportunitiesLabel.setText(String.format(LocalizedStrings.get(Keys.NUMBER_OF_OPPORTUNITIES), String.valueOf(duplicationInfo.size())));
 		} else {
 			clearResultsAction.setEnabled(false);
+			numberOfOpportunitiesLabel.setText("");
 		}
+		numberOfOpportunitiesLabel.getParent().layout(true, true);
 	}
 	
 	private void clearAnnotations(StructuredTextEditor ste) {

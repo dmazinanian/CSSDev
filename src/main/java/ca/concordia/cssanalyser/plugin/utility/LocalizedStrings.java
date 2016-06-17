@@ -59,7 +59,8 @@ public class LocalizedStrings {
 		MIXIN_PARAMETERS,
 		INVALID_MIXIN_PARAMETER_NAME,
 		DUPLICATE_PARAMETER_NAME, 
-		EMPTY_SELECTORS
+		EMPTY_SELECTORS,
+		NUMBER_OF_OPPORTUNITIES
 	}
 
 	public static void setBundle(Locale locale) {
