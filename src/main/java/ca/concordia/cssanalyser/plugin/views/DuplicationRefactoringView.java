@@ -26,7 +26,9 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.Position;
+import org.eclipse.jface.text.TextSelection;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.viewers.ColumnWeightData;
@@ -542,12 +544,20 @@ public class DuplicationRefactoringView extends ViewPart {
 	}
 	
 	private void setAnnotations(List<CSSAnnotation> annotations, StructuredTextEditor ste) {
-		if (ste != null) {
+		if (ste != null && annotations.size() > 0) {
 			AnnotationModel annotationModel = (AnnotationModel)ste.getDocumentProvider().getAnnotationModel(ste.getEditorInput());
 			currentAnnotations = annotations;
 			for (CSSAnnotation annotation : annotations) {
 				annotationModel.addAnnotation(annotation, annotation.getPosition());
 			}
+			Position firstAnnotationPosition = annotations.get(0).getPosition();
+			for (int i = 1; i < annotations.size(); i++) {
+				if (firstAnnotationPosition.getOffset() >  annotations.get(i).getPosition().getOffset()) {
+					firstAnnotationPosition = annotations.get(i).getPosition();
+				}
+			}
+			IDocument document = ste.getDocumentProvider().getDocument(ste.getEditorInput());
+			ste.getSelectionProvider().setSelection(new TextSelection(document, firstAnnotationPosition.getOffset(), 0));
 			if (annotations.size() > 0) {
 				clearAnnotationsAction.setEnabled(true);
 			} else {
