@@ -81,6 +81,7 @@ import ca.concordia.cssanalyser.analyser.duplication.DuplicationDetector;
 import ca.concordia.cssanalyser.analyser.duplication.items.Item;
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSetList;
+import ca.concordia.cssanalyser.analyser.progressmonitor.ProgressMonitor;
 import ca.concordia.cssanalyser.cssmodel.StyleSheet;
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
@@ -589,25 +590,63 @@ public class DuplicationRefactoringView extends ViewPart {
 			IProgressService progressService = PlatformUI.getWorkbench().getProgressService();
 			try {
 				progressService.busyCursorWhile(new IRunnableWithProgress() {
-					public void run(IProgressMonitor monitor)  {
+					public void run(IProgressMonitor iProgressMonitor) {
+						iProgressMonitor.beginTask(LocalizedStrings.get(Keys.FINDING_REFACTORING_OPPORTUNITIES), 100);
 						try {
+							// Parsing
+							iProgressMonitor.subTask(LocalizedStrings.get(Keys.PARSING_CSS_FILE));
 							CSSParser parser = CSSParserFactory.getCSSParser(CSSParserType.LESS);
 							StyleSheet styleSheet = parser.parseExternalCSS(selectedFile.getLocation().toOSString());
+							iProgressMonitor.worked(10);
+							if (iProgressMonitor.isCanceled())
+								return;
+							
+							// Finding duplications
+							iProgressMonitor.subTask(LocalizedStrings.get(Keys.FINDING_DUPLICATIONS));
 							final DuplicationDetector duplicationDetector = new DuplicationDetector(styleSheet);
 							if (allowDifferencesInValues) {
 								duplicationDetector.findPropertyDuplications();
 							} else {
 								duplicationDetector.findDuplications();
 							}
-
-							final List<ItemSetList> fpgrowthResults = duplicationDetector.fpGrowth(2, true);
+							iProgressMonitor.worked(20);
+							if (iProgressMonitor.isCanceled())
+								return;
 							
+							// FPGrowth
+							iProgressMonitor.subTask(LocalizedStrings.get(Keys.GETTING_OPPORTUNITIES));
+							final List<ItemSetList> fpgrowthResults = duplicationDetector.fpGrowth(2, true, new ProgressMonitor() {
+								@Override
+								public void progressed(int percent) {
+									if (percent % 2 == 0)
+										iProgressMonitor.worked(1);
+								}
+								
+								@Override
+								public boolean shouldStop() {
+									return iProgressMonitor.isCanceled();
+								}
+							});
+							if (iProgressMonitor.isCanceled())
+								return;
+							
+							// Getting info from duplications
+							iProgressMonitor.subTask(LocalizedStrings.get(Keys.GETTING_INFO));
 							List<DuplicationInfo> duplicationInfo = new ArrayList<>();
-
-							for (ItemSetList isl : fpgrowthResults)
-								for (ItemSet itemSet : isl)
+							for (ItemSetList isl : fpgrowthResults) {
+								if (iProgressMonitor.isCanceled())
+									break;
+								for (ItemSet itemSet : isl) {
 									duplicationInfo.add(new DuplicationInfo(itemSet, selectedFile));
+								}
+							}
+							iProgressMonitor.worked(10);
 							
+							if (iProgressMonitor.isCanceled())
+								return;
+							
+							// Populating view
+							iProgressMonitor.subTask(LocalizedStrings.get(Keys.POPULATING_VIEW));
 							Display.getDefault().asyncExec(new Runnable() {
 								public void run() {
 									if (duplicationInfo.isEmpty()) {
@@ -620,8 +659,9 @@ public class DuplicationRefactoringView extends ViewPart {
 									}
 									fillTableViewer(duplicationInfo);
 								}
-							});	
-
+							});
+							iProgressMonitor.worked(10);
+							
 						} catch (Exception e) {
 							throw new RuntimeException(e);
 						}
