@@ -14,6 +14,7 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
@@ -76,8 +77,11 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		if (duplicationInfo.getOriginalMixinMigrationOpportunity().getNumberOfParameters() > 0) {
 			createParametersTable(pageContents);
 		}
-		createSelectorsArea(pageContents);
-		createDiffArea(pageContents);
+		SashForm sashForm = new SashForm(pageContents, SWT.VERTICAL);
+		sashForm.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		
+		createSelectorsArea(sashForm);
+		createDiffArea(sashForm);
 	}
 
 	private void createMixinNameArea(Composite pageContents) {
@@ -155,16 +159,23 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 		parametersTable.getParent().layout();
 	}
 
-	private void createSelectorsArea(Composite pageContents) {
-		Group selectorsGroup = new Group(pageContents, SWT.NONE);
+	private void createSelectorsArea(Composite parent) {
+		Group selectorsGroup = new Group(parent, SWT.NONE);
 		selectorsGroup.setText(LocalizedStrings.get(Keys.SELECTORS));
 		selectorsGroup.setLayout(new GridLayout());
 		selectorsGroup.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 		
-		Composite selectorsComposite = new Composite(selectorsGroup, SWT.NONE);
+		ScrolledComposite scrolledComposite = new ScrolledComposite(selectorsGroup, SWT.H_SCROLL | SWT.V_SCROLL );
+		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		scrolledComposite.setExpandHorizontal(true);
+		scrolledComposite.setExpandVertical(true);
+				
+		Composite selectorsComposite = new Composite(scrolledComposite, SWT.NONE);
 		selectorsComposite.setLayout(new GridLayout());
 		selectorsComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		selectorsComposite.setBackground(PreferencesUtil.getTextEditorBackgroundColor());
+		
+		scrolledComposite.setContent(selectorsComposite);
 		
 		for (Selector selector : checkedSelectors) {
 			SelectorCheckBox selectorCheckBox = new SelectorCheckBox(selectorsComposite, selector.toString(), true);
@@ -187,12 +198,17 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 				}
 			});
 		}
+		scrolledComposite.setMinSize(selectorsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 	
-	private void createDiffArea(Composite pageContents) {	
-		ScrolledComposite scrolledComposite = new ScrolledComposite(pageContents, SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-		GridData scrolledCompositeGridData = new GridData(SWT.FILL, SWT.FILL, true, true);
-		scrolledComposite.setLayoutData(scrolledCompositeGridData);
+	private void createDiffArea(Composite parent) {	
+		Group declarationsGroup = new Group(parent, SWT.NONE);
+		declarationsGroup.setText(LocalizedStrings.get(Keys.DECLARATIONS));
+		declarationsGroup.setLayout(new GridLayout());
+		declarationsGroup.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+		
+		ScrolledComposite scrolledComposite = new ScrolledComposite(declarationsGroup, SWT.H_SCROLL | SWT.V_SCROLL);
+		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		scrolledComposite.setExpandHorizontal(true);
 		scrolledComposite.setExpandVertical(true);
 		Composite declarationsContainer = new Composite(scrolledComposite, SWT.NONE);
