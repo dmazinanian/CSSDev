@@ -100,7 +100,7 @@ public abstract class ExtractMixinAbstractTooltip extends ToolTip {
 		
 		StringBuilder toReturn = new StringBuilder();
 		if (propertiesAndLayersMap.keySet().size() == 1) {
-			List<PropertyAndLayer> list = propertiesAndLayersMap.get(1);
+			List<PropertyAndLayer> list = propertiesAndLayersMap.get(propertiesAndLayersMap.keySet().iterator().next());
 			getPropertiesForLayerString(toReturn, list, false);
 		} else if (propertiesAndLayersMap.keySet().size() > 1) {
 			for (Iterator<Integer> iterator = propertiesAndLayersMap.keySet().iterator(); iterator.hasNext();) {
@@ -120,7 +120,7 @@ public abstract class ExtractMixinAbstractTooltip extends ToolTip {
 		for (Iterator<PropertyAndLayer> iterator = list.iterator(); iterator.hasNext();) {
 			PropertyAndLayer propertyAndLayer = iterator.next();
 			if (shouldIndent) {
-				builder.append("\t");
+				builder.append("  ");
 			}
 			builder.append(propertyAndLayer.getPropertyName());
 			if (iterator.hasNext())
