@@ -9,8 +9,8 @@
             id="css-analyser">
       </category>
       <view
-            name="Duplication"
-            icon="icons/sample.gif"
+            name="Duplicated Declarations"
+            icon="icons/16.png"
             category="css-analyser"
             class="ca.concordia.cssanalyser.plugin.views.DuplicationRefactoringView"
             id="ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView">
