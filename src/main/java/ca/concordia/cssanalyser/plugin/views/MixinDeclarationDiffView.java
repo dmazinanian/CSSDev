@@ -3,10 +3,8 @@ package ca.concordia.cssanalyser.plugin.views;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
@@ -70,7 +68,6 @@ public class MixinDeclarationDiffView extends Composite {
 		new ExtractMixinMixinPropertyToolTip(mixinPropertyCheckBox.getPropertyLabel().getPropertyLabel().getUnderlayingLabel(), mixinDeclaration);
 		mixinPropertyCheckBox.setBackground(BACKGROUND_COLOR);
 				
-		Map<PropertyAndLayer, MixinValue> propertiesAndLayers = new LinkedHashMap<>();
 		for (MixinValue value : mixinDeclaration.getMixinValues()) {
 			Color valueColor = NORMAL_TEXT_COLOR;
 			if (value instanceof MixinLiteral)
@@ -78,10 +75,6 @@ public class MixinDeclarationDiffView extends Composite {
 			ValueLabel mixinDeclarationValueLabel = new MixinDeclarationValueLabel(this, valueColor, true, value);
 			new ExtractMixinMixinValueToolTip(mixinDeclarationValueLabel.getUnderlayingLabel(), mixinDeclaration, value);
 			mixinDeclarationValueLabel.setBackground(BACKGROUND_COLOR);
-			Set<PropertyAndLayer> propertyAndLayersForMixinValue = mixinDeclaration.getPropertyAndLayerForMixinValue(value);
-			for (PropertyAndLayer propertyAndLayerForMixinValue : propertyAndLayersForMixinValue) {
-				propertiesAndLayers.put(propertyAndLayerForMixinValue, value);
-			}
 			mixinPropertyCheckBox.addDeclarationValueLabel(mixinDeclarationValueLabel);
 			if (value instanceof MixinParameter) {
 				mixinParametersLabels.add(mixinDeclarationValueLabel);
@@ -108,12 +101,13 @@ public class MixinDeclarationDiffView extends Composite {
 			GridData layoutData = new GridData();
 			layoutData.horizontalIndent = 20;
 			declarationPropertyLabel.setLayoutData(layoutData);
-			for (PropertyAndLayer propertyAndLayer : propertiesAndLayers.keySet()) {
+			for (DeclarationValue declarationValue : mixinDeclaration.getReferenceDeclaration().getDeclarationValues()) {
+				PropertyAndLayer propertyAndLayer = declarationValue.getCorrespondingStylePropertyAndLayer();
 				Collection<DeclarationValue> values = declaration.getDeclarationValuesForStyleProperty(propertyAndLayer); 
 				if (values == null)
 					values = new ArrayList<>();
 				ValueLabel valueLabel = new DeclarationValueLabel(this, LITERAL_COLOR, false, values);
-				if (propertiesAndLayers.get(propertyAndLayer) instanceof MixinParameter) {
+				if (mixinDeclaration.getMixinValueForPropertyandLayer(propertyAndLayer) instanceof MixinParameter) {
 					valueLabel.setBackground(DIFFERENCE_BACKGROUND_COLOR);	
 				} else {
 					valueLabel.setBackground(BACKGROUND_COLOR);	
