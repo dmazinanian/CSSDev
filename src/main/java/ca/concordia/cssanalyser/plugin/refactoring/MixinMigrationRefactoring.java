@@ -27,6 +27,8 @@ import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
+import ca.concordia.cssanalyser.migration.topreprocessors.TransformationStatus;
+import ca.concordia.cssanalyser.migration.topreprocessors.TransformationStatus.TransformationStatusEntry;
 import ca.concordia.cssanalyser.migration.topreprocessors.less.LessMixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
@@ -49,8 +51,12 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	public RefactoringStatus checkFinalConditions(IProgressMonitor arg0)
 			throws CoreException, OperationCanceledException {
 		RefactoringStatus refactoringStatus = new RefactoringStatus();
-		if (!((MixinDuplicationInfo)duplicationInfo).getMixinMigrationOpportunity().preservesPresentation()) {
+		TransformationStatus status = ((MixinDuplicationInfo)duplicationInfo).getMixinMigrationOpportunity().preservesPresentation();
+		if (!status.isOK()) {
 			refactoringStatus.addError(LocalizedStrings.get(Keys.BREAK_PRESENTATION_ERROR));
+			for (TransformationStatusEntry transformationStatusEntry : status.getStatusEntries()) {
+				refactoringStatus.addError(transformationStatusEntry.toString());
+			}
 		}
 		return refactoringStatus;
 	}
