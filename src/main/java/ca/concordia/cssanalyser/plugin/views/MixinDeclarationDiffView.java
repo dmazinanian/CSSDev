@@ -3,8 +3,10 @@ package ca.concordia.cssanalyser.plugin.views;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
@@ -101,20 +103,24 @@ public class MixinDeclarationDiffView extends Composite {
 			GridData layoutData = new GridData();
 			layoutData.horizontalIndent = 20;
 			declarationPropertyLabel.setLayoutData(layoutData);
+			Set<PropertyAndLayer> checkedPropertiesAndLayers = new HashSet<>();
 			for (DeclarationValue declarationValue : mixinDeclaration.getReferenceDeclaration().getDeclarationValues()) {
 				PropertyAndLayer propertyAndLayer = declarationValue.getCorrespondingStylePropertyAndLayer();
-				Collection<DeclarationValue> values = declaration.getDeclarationValuesForStyleProperty(propertyAndLayer); 
-				if (values == null)
-					values = new ArrayList<>();
-				ValueLabel valueLabel = new DeclarationValueLabel(this, LITERAL_COLOR, false, values);
-				if (mixinDeclaration.getMixinValueForPropertyandLayer(propertyAndLayer) instanceof MixinParameter) {
-					valueLabel.setBackground(DIFFERENCE_BACKGROUND_COLOR);	
-				} else {
-					valueLabel.setBackground(BACKGROUND_COLOR);	
+				if (propertyAndLayer != null && !checkedPropertiesAndLayers.contains(propertyAndLayer)) {
+					Collection<DeclarationValue> values = declaration.getDeclarationValuesForStyleProperty(propertyAndLayer); 
+					if (values == null)
+						values = new ArrayList<>();
+					ValueLabel valueLabel = new DeclarationValueLabel(this, LITERAL_COLOR, false, values);
+					if (mixinDeclaration.getMixinValueForPropertyandLayer(propertyAndLayer) instanceof MixinParameter) {
+						valueLabel.setBackground(DIFFERENCE_BACKGROUND_COLOR);	
+					} else {
+						valueLabel.setBackground(BACKGROUND_COLOR);	
+					}
+
+					new ExtractMixinDeclarationValueTooltip(valueLabel.getUnderlayingLabel(), declaration, values);
+					declarationPropertyLabel.addDeclarationValueLabel(valueLabel);
+					checkedPropertiesAndLayers.add(propertyAndLayer);
 				}
-				
-				new ExtractMixinDeclarationValueTooltip(valueLabel.getUnderlayingLabel(), declaration, values);
-				declarationPropertyLabel.addDeclarationValueLabel(valueLabel);
 			}
 		}
 		setMixinDeclarationSelected(true);
