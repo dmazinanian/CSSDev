@@ -44,7 +44,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -246,21 +245,6 @@ public class DuplicationRefactoringView extends ViewPart {
 			return getImage(obj);
 		}
 	}
-	
-	private class DuplicationViewNameSorter extends ViewerSorter {
-
-		@Override
-		public int compare(Viewer viewer, Object obj1, Object obj2) {
-			
-			DuplicationInfo duplicationInfo1 = (DuplicationInfo)obj1;
-			double rank1 = duplicationInfo1.getRank();
-			
-			DuplicationInfo duplicationInfo2 = (DuplicationInfo)obj2;
-			double rank2 = duplicationInfo2.getRank();
-
-			return Double.compare(rank1, rank2);
-		}
-	}
 
 	@Override
 	public void createPartControl(Composite parent) {
@@ -300,7 +284,6 @@ public class DuplicationRefactoringView extends ViewPart {
 		viewer = new TableViewer(parent, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
 		viewer.setContentProvider(new DuplicationViewContentProvider(null));
 		viewer.setLabelProvider(new DuplicationViewLabelProvider());
-		viewer.setSorter(new DuplicationViewNameSorter());
 		viewer.setInput(getViewSite());
 		TableLayout layout = new TableLayout();
 		layout.addColumnData(new ColumnWeightData(40, true));
@@ -308,23 +291,20 @@ public class DuplicationRefactoringView extends ViewPart {
 		viewer.getTable().setLayout(layout);
 		viewer.getTable().setLinesVisible(true);
 		viewer.getTable().setHeaderVisible(true);
-
+		
+		TableColumn column0 = new TableColumn(viewer.getTable(), SWT.LEFT);
+		column0.setText(LocalizedStrings.get(Keys.DECLARATIONS));
+		column0.setResizable(true);
+		column0.pack();
+		column0.addListener(SWT.Selection,new ColumnSortListener(viewer, 0));
+		
 		TableColumn column1 = new TableColumn(viewer.getTable(), SWT.LEFT);
-		column1.setText(LocalizedStrings.get(Keys.DECLARATIONS));
+		column1.setText(LocalizedStrings.get(Keys.SELECTORS));
 		column1.setResizable(true);
 		column1.pack();
+		column1.addListener(SWT.Selection,new ColumnSortListener(viewer, 1));
 		
-		TableColumn column2 = new TableColumn(viewer.getTable(), SWT.LEFT);
-		column2.setText(LocalizedStrings.get(Keys.SELECTORS));
-		column2.setResizable(true);
-		column2.pack();
-		
-		//TableColumn column3 = new TableColumn(viewer.getTable(), SWT.LEFT);
-		//column3.setText("Penalty"); //TODO
-		//column3.setResizable(true);
-		//column3.pack();
-		
-		viewer.setColumnProperties(new String[] {"declarations", "selectors", "penalty"});
+		viewer.setColumnProperties(new String[] {"declarations", "selectors"});
 		viewer.getTable().setLayoutData(new GridData(GridData.FILL_BOTH));
 		
 		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
