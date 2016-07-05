@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
 
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Composite;

@@ -33,8 +33,8 @@ import ca.concordia.cssanalyser.migration.topreprocessors.less.LessMixinMigratio
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
+import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.MixinDiffWizardPage;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
-import ca.concordia.cssanalyser.plugin.views.MixinDiffWizardPage;
 
 public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	

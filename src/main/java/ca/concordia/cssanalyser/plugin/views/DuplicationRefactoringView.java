@@ -101,6 +101,7 @@ import ca.concordia.cssanalyser.plugin.refactoring.MixinMigrationRefactoring;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
+import ca.concordia.cssanalyser.plugin.wizards.DuplicationRefactoringWizard;
 import ca.concordia.cssanalyser.plugin.utility.ResultsStorage;
 
 public class DuplicationRefactoringView extends ViewPart {

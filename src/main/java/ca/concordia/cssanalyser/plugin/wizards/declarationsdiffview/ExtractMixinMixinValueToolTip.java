@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
 
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;

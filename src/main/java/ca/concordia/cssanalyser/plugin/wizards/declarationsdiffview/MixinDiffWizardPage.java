@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,8 +36,8 @@ import ca.concordia.cssanalyser.plugin.refactoring.MixinDuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.views.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
-import ca.concordia.cssanalyser.plugin.views.MixinDeclarationDiffView.MixinDeclarationSelectionListener;
+import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
+import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.MixinDeclarationDiffView.MixinDeclarationSelectionListener;
 
 public class MixinDiffWizardPage extends UserInputWizardPage {
 

@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,7 +25,7 @@ import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinParameter;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinValue;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil.ColorConstants;
-import ca.concordia.cssanalyser.plugin.views.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
+import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
 
 public class MixinDeclarationDiffView extends Composite {
 	
