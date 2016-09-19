@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.refactoring;
+package ca.concordia.cssanalyser.plugin.refactoring.mixins;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,9 +31,13 @@ import ca.concordia.cssanalyser.migration.topreprocessors.TransformationStatus;
 import ca.concordia.cssanalyser.migration.topreprocessors.TransformationStatus.TransformationStatusEntry;
 import ca.concordia.cssanalyser.migration.topreprocessors.less.LessMixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
+import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
+import ca.concordia.cssanalyser.plugin.refactoring.OffsetLength;
+import ca.concordia.cssanalyser.plugin.refactoring.OffsetLengthList;
+import ca.concordia.cssanalyser.plugin.refactoring.RefactoringUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.MixinDiffWizardPage;
+import ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview.MixinDiffWizardPage;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 
 public class MixinMigrationRefactoring extends DuplicationRefactoring {

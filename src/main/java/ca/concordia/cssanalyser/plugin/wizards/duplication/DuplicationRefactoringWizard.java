@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.wizards;
+package ca.concordia.cssanalyser.plugin.wizards.duplication;
 
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;

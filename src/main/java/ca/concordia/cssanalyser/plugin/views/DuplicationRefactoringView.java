@@ -12,10 +12,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.ICoreRunnable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
@@ -44,6 +47,8 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.window.Window;
+import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -77,6 +82,7 @@ import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.progress.IProgressService;
 import org.eclipse.wst.sse.ui.StructuredTextEditor;
+import org.w3c.dom.Document;
 
 import ca.concordia.cssanalyser.analyser.duplication.DuplicationDetector;
 import ca.concordia.cssanalyser.analyser.duplication.items.Item;
@@ -95,13 +101,18 @@ import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
-import ca.concordia.cssanalyser.plugin.refactoring.GroupingRefactoring;
-import ca.concordia.cssanalyser.plugin.refactoring.MixinDuplicationInfo;
-import ca.concordia.cssanalyser.plugin.refactoring.MixinMigrationRefactoring;
+import ca.concordia.cssanalyser.plugin.refactoring.grouping.Crawler;
+import ca.concordia.cssanalyser.plugin.refactoring.grouping.CrawlerObserver;
+import ca.concordia.cssanalyser.plugin.refactoring.grouping.GroupingRefactoring;
+import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinDuplicationInfo;
+import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinMigrationRefactoring;
+import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.wizards.DuplicationRefactoringWizard;
+import ca.concordia.cssanalyser.plugin.wizards.analysisoptions.AnalysisOptionsWizard;
+import ca.concordia.cssanalyser.plugin.wizards.duplication.DuplicationRefactoringWizard;
+import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 import ca.concordia.cssanalyser.plugin.utility.ResultsStorage;
 
 public class DuplicationRefactoringView extends ViewPart {
@@ -117,6 +128,8 @@ public class DuplicationRefactoringView extends ViewPart {
 	private IAction groupingRefactoringOpportunitiesAction;
 	private IAction clearAnnotationsAction;
 	private IAction clearResultsAction;
+	private IAction showSettingsAction;
+	private IAction refreshDependenciesAction;
 	
 	private IFile selectedFile;
 	private boolean allowDifferencesInValues;
@@ -124,6 +137,8 @@ public class DuplicationRefactoringView extends ViewPart {
 	private List<CSSAnnotation> currentAnnotations = new ArrayList<>();
 	private Map<IFile, ResultsStorage> fileToResultsMap = new HashMap<>();
 	private Label numberOfOpportunitiesLabel;
+	private AnalysisOptions analysisOptions = new AnalysisOptions();
+	private List<Document> documents = new ArrayList<>();
 	
 	private IPropertyListener propertyListener = new IPropertyListener() {
 		@Override
@@ -227,7 +242,6 @@ public class DuplicationRefactoringView extends ViewPart {
 	}
 	
 	private class DuplicationViewLabelProvider extends LabelProvider implements ITableLabelProvider {
-		
 		public String getColumnText(Object obj, int index) {
 			DuplicationInfo selectedDuplicationInfoObject = (DuplicationInfo) obj;
 			switch(index){
@@ -377,14 +391,21 @@ public class DuplicationRefactoringView extends ViewPart {
 
 	private void fillLocalPullDown(IMenuManager manager) {
 		manager.add(findDuplicatedDeclarationsAction);
+		manager.add(showSettingsAction);
 		manager.add(new Separator());
 		manager.add(clearResultsAction);
 		manager.add(clearAnnotationsAction);
+		manager.add(new Separator());
+		manager.add(refreshDependenciesAction);
 	}
 	
 	private void fillLocalToolBar(IToolBarManager manager) {
+		manager.add(refreshDependenciesAction);
+		manager.add(new Separator());
 		manager.add(clearAnnotationsAction);
 		manager.add(clearResultsAction);
+		manager.add(new Separator());
+		manager.add(showSettingsAction);
 		manager.add(findDuplicatedDeclarationsAction);
 	}
 
@@ -429,6 +450,17 @@ public class DuplicationRefactoringView extends ViewPart {
 		clearResultsAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_TOOL_DELETE));
 		clearResultsAction.setEnabled(false);
 		
+		showSettingsAction = new Action() {
+			@Override
+			public void run() {
+				showAnalysisWizard();
+			}
+
+		};
+		showSettingsAction.setText(LocalizedStrings.get(Keys.SHOW_ANALYSIS_SETTINGS));
+		showSettingsAction.setToolTipText(LocalizedStrings.get(Keys.SHOW_ANALYSIS_SETTINGS));
+		showSettingsAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_DEF_VIEW));
+		
 		tableRowDoubleClickAction = new Action() {
 			public void run() {
 				highlightCodeForSelection();				
@@ -465,7 +497,17 @@ public class DuplicationRefactoringView extends ViewPart {
 					if (selectedDuplicationInfo != null) {
 						ItemSet selectedItemSet = selectedDuplicationInfo.getItemSet();
 						if (!selectedItemSet.containsDifferencesInValues()) {
-							DuplicationRefactoring refactoring = new GroupingRefactoring(selectedDuplicationInfo);
+							DuplicationRefactoring refactoring;
+							if (documents != null && documents.size() > 0) {
+								CSSValueOverridingDependencyList dependencies = new CSSValueOverridingDependencyList();
+								for (Document document : documents) {
+									StyleSheet parentStyleSheet = selectedDuplicationInfo.getItemSet().getSupport().iterator().next().getParentStyleSheet();
+									dependencies.addAll(parentStyleSheet.getValueOverridingDependencies(document));
+								}
+								refactoring = new GroupingRefactoring(selectedDuplicationInfo, dependencies);
+							} else {
+								refactoring = new GroupingRefactoring(selectedDuplicationInfo);
+							}
 							showRefactoringWizard(refactoring);
 						}
 					}
@@ -473,6 +515,17 @@ public class DuplicationRefactoringView extends ViewPart {
 			}
 		};
 		groupingRefactoringOpportunitiesAction.setText(LocalizedStrings.get(Keys.GROUP_SELECTORS));
+
+		refreshDependenciesAction = new Action() {
+			@Override
+			public void run() {
+				analyzeDOMs();
+			}
+		};
+		refreshDependenciesAction.setEnabled(false);
+		refreshDependenciesAction.setText(LocalizedStrings.get(Keys.REFRESEH_DEPENDENCIES));
+		refreshDependenciesAction.setToolTipText(LocalizedStrings.get(Keys.REFRESEH_DEPENDENCIES));
+		refreshDependenciesAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_ELCL_SYNCED));
 		
 		IEditorPart activeEditor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor();
 		if (activeEditor != null) {
@@ -799,13 +852,48 @@ public class DuplicationRefactoringView extends ViewPart {
 			for (Declaration declaration : declarationsToAnnotate) {
 				Position position = new Position(declaration.getLocationInfo().getOffset(), declaration.getLocationInfo().getLength());
 				CSSAnnotation cssAnnotation = new CSSAnnotation(CSSAnnotationType.DUPLICATION, 
-						"Duplicated " + declaration.getProperty(),
+						LocalizedStrings.get(Keys.DUPLICATED) + declaration.getProperty(),
 						position);
 				annotations.add(cssAnnotation);
 			}
 			setAnnotations(annotations, ste);
 		} catch (PartInitException e) {
 			showDetailedError(e);
+		}
+	}
+	
+	private void showAnalysisWizard() {
+		AnalysisOptionsWizard analysisOptionsWizard = new AnalysisOptionsWizard(analysisOptions);
+		WizardDialog wizardDialog = new WizardDialog(getViewSite().getShell(), analysisOptionsWizard);
+		if (wizardDialog.open() == Window.OK) {
+			analysisOptions = analysisOptionsWizard.getAnalysisOptions();
+			refreshDependenciesAction.setEnabled(analysisOptions.shouldAnalyzeDoms());
+		}
+	}
+
+	private void analyzeDOMs() {
+		if (analysisOptions.shouldAnalyzeDoms()) {
+			Crawler crawler = new Crawler(analysisOptions);
+			documents = new ArrayList<>();
+			Job job = Job.create(LocalizedStrings.get(Keys.CRAWLING_JOB), new ICoreRunnable() {
+				@Override
+				public void run(IProgressMonitor monitor) throws CoreException {
+					crawler.setCancelMonitor(() -> monitor.isCanceled());
+					crawler.addNewDOMObserver(new CrawlerObserver() {
+						@Override
+						public void newDOMVisited(Document document) {
+							documents.add(document);
+							//newDOMFound();
+						}
+					});
+					crawler.start();
+					monitor.done();
+				}
+			});
+			job.setUser(false);
+			job.schedule();
+		} else {
+			showAnalysisWizard();
 		}
 	}
 }

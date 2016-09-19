@@ -10,7 +10,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.wst.css.core,
  org.eclipse.ui.ide,
  org.eclipse.wst.sse.ui,
- org.eclipse.jface.text
+ org.eclipse.jface.text,
+ org.eclipse.jetty.server,
+ org.eclipse.jetty.util
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Vendor: Davood Mazinanian

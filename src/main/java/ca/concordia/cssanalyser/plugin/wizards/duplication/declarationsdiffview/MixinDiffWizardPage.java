@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
+package ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -32,12 +32,12 @@ import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinDeclaration;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinMigrationOpportunity;
 import ca.concordia.cssanalyser.migration.topreprocessors.mixin.MixinParameter;
-import ca.concordia.cssanalyser.plugin.refactoring.MixinDuplicationInfo;
+import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinDuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
-import ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview.MixinDeclarationDiffView.MixinDeclarationSelectionListener;
+import ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview.ExtendedCheckBox.ExtendedCheckboxSelectionListener;
+import ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview.MixinDeclarationDiffView.MixinDeclarationSelectionListener;
 
 public class MixinDiffWizardPage extends UserInputWizardPage {
 

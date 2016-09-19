@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
+package ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview;
 
 import java.util.Collection;
 import java.util.Iterator;

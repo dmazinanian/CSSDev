@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.refactoring;
+package ca.concordia.cssanalyser.plugin.refactoring.grouping;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +27,10 @@ import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.GroupingSelector;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.io.IOHelper;
+import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
+import ca.concordia.cssanalyser.plugin.refactoring.OffsetLength;
+import ca.concordia.cssanalyser.plugin.refactoring.OffsetLengthList;
+import ca.concordia.cssanalyser.plugin.refactoring.RefactoringUtil;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
@@ -68,6 +72,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		Set<Declaration> declarationsToRemove = itemSet.getDeclarationsToBeRemoved();
 		GroupingSelector newGrouping = itemSet.getGroupingSelector();
 		String newGroupingSelectorText = getSelectorText(newGrouping, System.lineSeparator());
+		
 		TextFileChange result = new TextFileChange(duplicationInfo.getSourceIFile().getName(), duplicationInfo.getSourceIFile());
 	    // Add the root
 	    MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
@@ -111,6 +116,10 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    	insertNewGroupingEdit = new InsertEdit(fileContents.length(), newGroupingSelectorText);	 
 		    } else {
 		    	insertNewGroupingEdit = null;
+		    	//List<Integer> newOrdering = new ArrayList<>();
+		    	//RefactorToSatisfyDependencies rtsd = new RefactorToSatisfyDependencies();
+		    	//StyleSheet styleSheet = itemSet.getSupport().iterator().next().getParentStyleSheet();
+		    	//StyleSheet refactorToSatisfyOverridingDependencies = rtsd.refactorToSatisfyOverridingDependencies(styleSheet, dependenciesToHold, newOrdering);
 		    }
 		    fileChangeRootEdit.addChild(insertNewGroupingEdit);
 		    result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));

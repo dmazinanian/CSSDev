@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.refactoring;
+package ca.concordia.cssanalyser.plugin.refactoring.mixins;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.ltk.core.refactoring.Refactoring;

@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.wizards.declarationsdiffview;
+package ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview;
 
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
