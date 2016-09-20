@@ -19,10 +19,12 @@ import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.text.edits.DeleteEdit;
 import org.eclipse.text.edits.InsertEdit;
 import org.eclipse.text.edits.MultiTextEdit;
+import org.eclipse.text.edits.TextEdit;
 import org.eclipse.text.edits.TextEditGroup;
 
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
 import ca.concordia.cssanalyser.cssmodel.LocationInfo;
+import ca.concordia.cssanalyser.cssmodel.StyleSheet;
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.GroupingSelector;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
@@ -35,6 +37,8 @@ import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
+import ca.concordia.cssanalyser.refactoring.RefactorDuplicationsToGroupingSelector;
+import ca.concordia.cssanalyser.refactoring.RefactorToSatisfyDependencies;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 
 public class GroupingRefactoring extends DuplicationRefactoring {
@@ -65,7 +69,7 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	}
 
 	@Override
-	public Change createChange(IProgressMonitor progressMonitor) throws CoreException, OperationCanceledException {
+	public Change createChange(IProgressMonitor progressMonitor) throws OperationCanceledException {
 		ItemSet itemSet = duplicationInfo.getItemSet();
 		progressMonitor.beginTask(LocalizedStrings.get(Keys.CREATING_CHANGE), 1);
 		Set<Selector> emptySelectors = itemSet.getEmptySelectorsAfterRefactoring();
@@ -109,20 +113,67 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
 		    
 		    // Add grouping selector
-		    if (fileContents.charAt(fileContents.length() - 1) == '}')
-				newGroupingSelectorText = System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText;
-		    InsertEdit insertNewGroupingEdit;
 		    if (this.dependenciesToHold == null) {
-		    	insertNewGroupingEdit = new InsertEdit(fileContents.length(), newGroupingSelectorText);	 
+		    	// Just add it to the end
+		    	if (fileContents.charAt(fileContents.length() - 1) == '}') {
+					newGroupingSelectorText = System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText;
+		    	}
+		    	InsertEdit insertNewGroupingEdit = new InsertEdit(fileContents.length(), newGroupingSelectorText);
+		    	fileChangeRootEdit.addChild(insertNewGroupingEdit);
+		    	result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));
 		    } else {
-		    	insertNewGroupingEdit = null;
-		    	//List<Integer> newOrdering = new ArrayList<>();
-		    	//RefactorToSatisfyDependencies rtsd = new RefactorToSatisfyDependencies();
-		    	//StyleSheet styleSheet = itemSet.getSupport().iterator().next().getParentStyleSheet();
-		    	//StyleSheet refactorToSatisfyOverridingDependencies = rtsd.refactorToSatisfyOverridingDependencies(styleSheet, dependenciesToHold, newOrdering);
+		    	StyleSheet originalStyleSheet = itemSet.getSupport().iterator().next().getParentStyleSheet();
+		    	RefactorDuplicationsToGroupingSelector refactorDuplications = new RefactorDuplicationsToGroupingSelector(originalStyleSheet);
+		    	StyleSheet refactoredStyleSheet = refactorDuplications.groupingRefactoring(duplicationInfo.getItemSet());
+		    	List<Integer> newOrdering = new ArrayList<>();
+		    	RefactorToSatisfyDependencies rtsd = new RefactorToSatisfyDependencies();
+		    	rtsd.refactorToSatisfyOverridingDependencies(refactoredStyleSheet, dependenciesToHold, newOrdering);
+		    	if (newOrdering.size() == 0) {
+		    		// Refactoring is not doable.
+		    	} else {
+		    		List<Selector> selectorsList = new ArrayList<>();
+		    		for (Selector selector : refactoredStyleSheet.getAllSelectors()) {
+		    			selectorsList.add(selector);
+		    		}
+		    		for (int i = 0; i < newOrdering.size(); i++) {
+		    			if (newOrdering.get(i) != i + 1) {
+		    				// There is a change, we should re-order something
+		    				if (newOrdering.get(i) == selectorsList.size()) { 
+		    					/*
+		    					 * The last selector is the grouping one,
+		    					 * which does not exist in the file. So we need to simply insert it
+		    					 * before the selector in the i'th position
+		    					 */
+		    					if (fileContents.charAt(selectorsList.get(i).getLocationInfo().getOffset() - 1) == '}') {
+		    						newGroupingSelectorText = System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText;
+		    					}
+		    					InsertEdit insertNewGroupingEdit = new InsertEdit(selectorsList.get(i).getLocationInfo().getOffset(), newGroupingSelectorText);
+		    					fileChangeRootEdit.addChild(insertNewGroupingEdit);
+		    					result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));
+		    				} else {
+		    					// Remove from the old place, put in the new place
+		    					Selector selectorToReorder = selectorsList.get(newOrdering.get(i) - 1);
+		    					LocationInfo oldLocation = selectorToReorder.getLocationInfo();
+		    					OffsetLength oldLocationExpanded = RefactoringUtil.expandAreaToRemove(fileContents, oldLocation);
+		    					DeleteEdit deleteEdit = new DeleteEdit(oldLocationExpanded.getOffset(), oldLocationExpanded.getLength());
+		    					fileChangeRootEdit.addChild(deleteEdit);
+		    					int positionToInsert = -1;
+		    					if (i == selectorsList.size() - 1) {
+		    						positionToInsert = fileContents.length();
+		    					} else {
+		    						positionToInsert = selectorsList.get(i).getLocationInfo().getOffset();
+		    					}
+		    					String selectorText = getSelectorText(selectorToReorder, System.lineSeparator());
+								InsertEdit insertEdit = new InsertEdit(positionToInsert, selectorText);
+		    					fileChangeRootEdit.addChild(insertEdit);
+
+		    					result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.REORDER_SELECTORS), selectorToReorder), 
+		    							new TextEdit[] { deleteEdit, insertEdit }));
+		    				}
+		    			}
+		    		}
+		    	}
 		    }
-		    fileChangeRootEdit.addChild(insertNewGroupingEdit);
-		    result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));
 		    
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -140,10 +191,10 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    return change;
 	}
 
-	private String getSelectorText(Selector newGrouping, String newLineChar) {
+	private String getSelectorText(Selector selector, String newLineChar) {
 		StringBuilder selectorString = new StringBuilder();
-		selectorString.append(newGrouping.toString()).append(" {").append(newLineChar);		
-		for (Iterator<Declaration> iterator = newGrouping.getDeclarations().iterator(); iterator.hasNext();) {
+		selectorString.append(selector.toString()).append(" {").append(newLineChar);		
+		for (Iterator<Declaration> iterator = selector.getDeclarations().iterator(); iterator.hasNext();) {
 			Declaration declaration = iterator.next();
 			selectorString.append(PreferencesUtil.getTabString());
 			selectorString.append(declaration.toString());

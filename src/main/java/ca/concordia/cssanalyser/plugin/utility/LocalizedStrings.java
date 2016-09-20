@@ -96,7 +96,8 @@ public class LocalizedStrings {
 		CRAW_HIDDEN_ANCHORS,
 		REFRESEH_DEPENDENCIES,
 		CRAWLING_JOB,
-		DUPLICATED,
+		DUPLICATED, 
+		REORDER_SELECTORS,
 	}
 
 	public static void setBundle(Locale locale) {
