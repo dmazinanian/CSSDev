@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.views.duplicationrefactoring;
 
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerComparator;

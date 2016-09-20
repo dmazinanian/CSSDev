@@ -12,7 +12,7 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 
-import ca.concordia.cssanalyser.plugin.views.DuplicationRefactoringView;
+import ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView;
 
 
 

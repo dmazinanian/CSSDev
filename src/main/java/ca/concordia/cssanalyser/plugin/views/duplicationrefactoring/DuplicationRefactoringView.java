@@ -1,4 +1,4 @@
-package ca.concordia.cssanalyser.plugin.views;
+package ca.concordia.cssanalyser.plugin.views.duplicationrefactoring;
 
 
 import java.io.PrintWriter;
