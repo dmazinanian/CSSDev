@@ -32,8 +32,8 @@ import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSInterSelectorValueOverridingDependency;
+import ca.concordia.cssanalyser.refactoring.dependencies.CSSInterSelectorValueOverridingDependency.InterSelectorDependencyReason;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSIntraSelectorValueOverridingDependency;
-import ca.concordia.cssanalyser.refactoring.dependencies.CSSSpecificityValueOverridingDependency;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependency;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 
@@ -74,8 +74,7 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 				}
 				selectorFigure.addIntraSelectorDependency(intraSelectorDependency);
 				
-			} else if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency ||
-					cssValueOverridingDependency instanceof CSSSpecificityValueOverridingDependency) {
+			} else if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency) {
 				Selector selector1 = getRealSelector(cssValueOverridingDependency.getSelector1());
 				SelectorFigure selector1Figure = selectorFigures.get(selector1);
 				if (selector1Figure == null) {
@@ -128,13 +127,16 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 				Point destination = new Point(destinationFigure.getLocation().x, destinationFigure.getLocation().y + destinationFigure.getPreferredSize().height / 2);
 				RoundedConnection connection = new RoundedConnection(source, destination, SELECTORS_X - SELECTORS_GAP);
 				if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency) {
-					CSSInterSelectorValueOverridingDependency cssInterSelectorValueOverridingDependency = (CSSInterSelectorValueOverridingDependency) cssValueOverridingDependency;
-					connection.setForegroundColor(VisualizationConstants.CASCADING_DEPENDENCY_COLOR);
-					if (cssInterSelectorValueOverridingDependency.isMediaDifferent()) {
+					CSSInterSelectorValueOverridingDependency cssInterSelectorValueOverridingDependency = 
+							(CSSInterSelectorValueOverridingDependency) cssValueOverridingDependency;
+					if (cssInterSelectorValueOverridingDependency.getDependencyReason() == InterSelectorDependencyReason.DUE_TO_CASCADING) {
+						connection.setForegroundColor(VisualizationConstants.CASCADING_DEPENDENCY_COLOR);
+					} else if (cssInterSelectorValueOverridingDependency.getDependencyReason() == InterSelectorDependencyReason.DUE_TO_SPECIFICITY) {
+						connection.setForegroundColor(VisualizationConstants.SPECIFICITY_DEPENDENCY_COLOR);
+					}
+					if (cssInterSelectorValueOverridingDependency.areMediaQueryListsDifferent()) {
 						connection.setLineStyle(SWT.LINE_DASH);
 					}
-				} else if (cssValueOverridingDependency instanceof CSSSpecificityValueOverridingDependency) {
-					connection.setForegroundColor(VisualizationConstants.SPECIFICITY_DEPENDENCY_COLOR);
 				}
 				unhover(connection);
 				sourceFigure.addOutgoingConnection(connection);
