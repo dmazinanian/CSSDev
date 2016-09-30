@@ -12,8 +12,15 @@
             name="Duplicated Declarations"
             icon="icons/16.png"
             category="css-analyser"
-            class="ca.concordia.cssanalyser.plugin.views.DuplicationRefactoringView"
-            id="ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView">
+            class="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView"
+            id="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
+      </view>
+      <view
+            name="Overriding Dependencies"
+            icon="icons/16.png"
+            category="css-analyser"
+            class="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView"
+            id="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView">
       </view>
    </extension>
    <extension
@@ -24,7 +31,7 @@
                ratio="0.5"
                relative="org.eclipse.ui.views.ProblemView"
                relationship="right"
-               id="ca.concordia.cssanalyser.plugin.activator.views.DuplicationRefactoringView">
+               id="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
          </view>
       </perspectiveExtension>
    </extension>
@@ -53,6 +60,31 @@
             textStylePreferenceKey="duplicatedDeclarations_stylePreferences"
             textStylePreferenceValue="BOX"
             verticalRulerPreferenceKey="duplicatedDeclarations_verticalRuler"
+            verticalRulerPreferenceValue="false">
+      </specification>
+	  <specification
+            annotationType="ca.concordia.cssanalyser.plugin.annotations.StyleRule"
+            colorPreferenceKey="styleRule_color"
+            colorPreferenceValue="255,170,220"
+            contributesToHeader="false"
+            highlightPreferenceKey="styleRule_highlight"
+            highlightPreferenceValue="true"
+            includeOnPreferencePage="true"
+            isGoToNextNavigationTarget="true"
+            isGoToNextNavigationTargetKey="styleRule_nextNavigationTarget"
+            isGoToPreviousNavigationTarget="true"
+            isGoToPreviousNavigationTargetKey="styleRule_previousNavigationTarget"
+            label="Style Rule"
+            overviewRulerPreferenceKey="styleRule_overviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="0"
+            showInNextPrevDropdownToolbarAction="true"
+            showInNextPrevDropdownToolbarActionKey="styleRule_nextPrevDropdownToolbar"
+            textPreferenceKey="styleRule_text"
+            textPreferenceValue="true"
+            textStylePreferenceKey="styleRule_stylePreferences"
+            textStylePreferenceValue="BOX"
+            verticalRulerPreferenceKey="styleRule_verticalRuler"
             verticalRulerPreferenceValue="false">
       </specification>
    </extension>
