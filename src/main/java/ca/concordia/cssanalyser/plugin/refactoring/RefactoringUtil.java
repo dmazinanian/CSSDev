@@ -22,11 +22,8 @@ public class RefactoringUtil {
 		startFrom = offset + length;
 		while (startFrom < fileContents.length()) {
 			char charAt = fileContents.charAt(startFrom++);
-			if (charAt == ' ' || charAt == '\t' || charAt == '\r' || charAt == ';') {
+			if (charAt == ' ' || charAt == '\t' || charAt == '\r' || charAt == '\n' || charAt == ';') {
 				length++;
-			} else if (charAt == '\n') {
-				length++;
-				break;
 			} else {
 				break;
 			}
