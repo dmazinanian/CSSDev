@@ -230,7 +230,9 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 						checkedProperties.remove(mixinDeclaration.getPropertyName());
 					}
 					duplicationInfo.setMixinMigrationOpportunity(originalMixinMigrationOpportunity.getSubOpportunity(getSelectedProperties(), getSelectedSelectors()));
-					populateParametersTable();
+					if (duplicationInfo.getOriginalMixinMigrationOpportunity().getNumberOfParameters() > 0) {
+						populateParametersTable();
+					}
 					setPageComplete(validatePage());
 				}
 			});
