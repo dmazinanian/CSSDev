@@ -34,11 +34,10 @@ public class DependenciesFigurePaneMouseListener implements MouseMotionListener,
 	@Override
 	public void mouseDragged(MouseEvent arg0) {
 		if (lastClickedPosition != null && lastClickedFigureAtLocation != null) {
-			//System.out.println(figureAtLocation);
 			if (lastClickedFigureAtLocation instanceof SelectorFigure) {
 				SelectorFigure selectorFigure = (SelectorFigure) lastClickedFigureAtLocation;
 				selectorFigure.translate(arg0.x - lastClickedPosition.x, arg0.y - lastClickedPosition.y);
-				selectorFigure.resetConnectionsPosition();
+				selectorFigure.resetConnectionsPositions();
 				lastClickedPosition = arg0.getLocation();
 				dependenciesPane.repaint();
 			}
