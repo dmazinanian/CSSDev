@@ -911,6 +911,8 @@ public class DuplicationRefactoringView extends ViewPart {
 		for (Document document : documents) {
 			dependencies.addAll(styleSheet.getValueOverridingDependencies(document));
 		}
+		// Also add intra-selector dependencies
+		dependencies.addAll(styleSheet.getValueOverridingDependencies());
 		return dependencies;
 	}
 }
