@@ -125,7 +125,9 @@ public class AnalysisOptionsWizardPage extends WizardPage {
 		new Label(specifyOutputFolderComposite, SWT.NONE).setText(LocalizedStrings.get(Keys.SPECIFY) + ":");
 		outputDirectoryText = new Text(specifyOutputFolderComposite, SWT.BORDER);
 		outputDirectoryText.setText(outputDirectory != null ? outputDirectory.getAbsolutePath() : "");
-		outputDirectoryText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true));
+		GridData gridData2 = new GridData(SWT.FILL, SWT.CENTER, true, true);
+		gridData2.widthHint = 100;
+		outputDirectoryText.setLayoutData(gridData2);
 		Button outputDirectoryButton = new Button(specifyOutputFolderComposite, SWT.PUSH);
 		outputDirectoryButton.setText("...");
 		outputDirectoryButton.addSelectionListener(new SelectionAdapter() {
