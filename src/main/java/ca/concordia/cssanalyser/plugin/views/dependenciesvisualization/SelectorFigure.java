@@ -12,7 +12,6 @@ import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.RoundedRectangle;
 import org.eclipse.draw2d.ToolbarLayout;
-import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.swt.SWT;
 
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
@@ -27,8 +26,8 @@ public class SelectorFigure extends RoundedRectangle {
 	private final List<CSSValueOverridingDependency> incomingIntraSelectorDependencies = new ArrayList<>();
 	private final List<CSSValueOverridingDependency> outgoingIntraSelectorDependencies = new ArrayList<>();
 	private final Set<CSSValueOverridingDependency> markedDependencies = new HashSet<>();
-	private final List<RoundedConnection> outgoingConnections = new ArrayList<>();
-	private final List<RoundedConnection> incomingConnections = new ArrayList<>();
+	private final List<SelectorFigureConnection> outgoingConnections = new ArrayList<>();
+	private final List<SelectorFigureConnection> incomingConnections = new ArrayList<>();
 	private Selector selector;
 	
 	public SelectorFigure() {
@@ -38,7 +37,7 @@ public class SelectorFigure extends RoundedRectangle {
 	public SelectorFigure(Selector selector) {
 		this.selector = selector;
 		ToolbarLayout toolbarLayout = new ToolbarLayout();
-		toolbarLayout.setSpacing(5);
+		toolbarLayout.setSpacing(2);
 		setLayoutManager(toolbarLayout);
 		setBackgroundColor(VisualizationConstants.SELECTOR_BG_COLOR);
 		setBorder(new MarginBorder(5, 10, 5, 10));
@@ -47,18 +46,14 @@ public class SelectorFigure extends RoundedRectangle {
 		setFont(PreferencesUtil.getTextEditorFont());
 		
 		if (selector != null) {
-			String selectorNameString = selector.toString();
-			if (selectorNameString.length() > 15) {
-				selectorNameString = selectorNameString.substring(0, 12) + "...";
-			}
-			Label selectorName = new Label(selectorNameString);
+			Label selectorName = new Label(getLabelString(selector.toString(), 15));
 			selectorName.setLabelAlignment(PositionConstants.LEFT);
 			selectorName.setToolTip(new SelectorTooltip(selector));
 			selectorName.setForegroundColor(VisualizationConstants.SELECTOR_COLOR);
 			add(selectorName);
 			
 			if (selector.getMediaQueryLists().size() > 0) {
-				Label mediaQuery = new Label(selector.getMediaQueryLists().toString());
+				Label mediaQuery = new Label(getLabelString(selector.getMediaQueryLists().toString(), 15));
 				add(mediaQuery);
 			}
 		} else {
@@ -68,6 +63,13 @@ public class SelectorFigure extends RoundedRectangle {
 		setAntialias(SWT.ON);
 	}
 	
+	private String getLabelString(String string, int maxLength) {
+		if (string.length() > maxLength) {
+			string = string.substring(0, maxLength - 3) + "...";
+		}
+		return string;
+	}
+
 	public Selector getSelector() {
 		return selector;
 	}
@@ -80,6 +82,12 @@ public class SelectorFigure extends RoundedRectangle {
 			incomingIntraDeclarationDependencies.put(dependency.getDeclaration1(), dependenciesFromThisDeclaration);
 		}
 		dependenciesFromThisDeclaration.add(dependency);
+	}
+	
+	public List<CSSIntraSelectorValueOverridingDependency> getIntraSelectorValueOverridingDependencies() {
+		List<CSSIntraSelectorValueOverridingDependency> toReturn = new ArrayList<>();
+		incomingIntraDeclarationDependencies.values().forEach(list -> toReturn.addAll(list));
+		return toReturn;
 	}
 
 	public void addOutgoingInterSelectorDependency(CSSValueOverridingDependency interSelectorDependency) {
@@ -98,36 +106,43 @@ public class SelectorFigure extends RoundedRectangle {
 		return incomingIntraSelectorDependencies;
 	}
 	
-	public void addOutgoingConnection(RoundedConnection connection) {
+	public void addOutgoingConnection(SelectorFigureConnection connection) {
 		outgoingConnections.add(connection);
 	}
 	
-	public List<RoundedConnection> getOutgoingConnections() {
+	public List<SelectorFigureConnection> getOutgoingConnections() {
 		return outgoingConnections;
 	}
 	
-	public void addIncomingConnection(RoundedConnection connection) {
+	public void addIncomingConnection(SelectorFigureConnection connection) {
 		incomingConnections.add(connection);
 	}
 	
-	public List<RoundedConnection> getIncomingConnections() {
+	public List<SelectorFigureConnection> getIncomingConnections() {
 		return incomingConnections;
 	}
 
 	public void resetConnectionsPositions() {
-		for (RoundedConnection verticalRoundedConnection : outgoingConnections) {
-			verticalRoundedConnection.setSource(new Point(this.getLocation().x, this.getLocation().y + this.getPreferredSize().height / 2));
-		}
-		
-		for (RoundedConnection verticalRoundedConnection : incomingConnections) {
-			verticalRoundedConnection.setTarget(new Point(this.getLocation().x, this.getLocation().y + this.getPreferredSize().height / 2));
-		}
+		outgoingConnections.forEach(connection -> connection.calculateAnchorPoints());
+		incomingConnections.forEach(connection -> connection.calculateAnchorPoints());
 	}
 
-	public CSSValueOverridingDependency gesDependencyTo(SelectorFigure selectorFigure) {
+	public CSSValueOverridingDependency getDependencyTo(SelectorFigure selectorFigure) {
 		for (CSSValueOverridingDependency cssValueOverridingDependency : outgoingIntraSelectorDependencies) {
-			if (DependenciesFigurePane.getRealSelector(cssValueOverridingDependency.getSelector2()) == selectorFigure.getSelector()) {
+			if (cssValueOverridingDependency.getRealSelector2() == selectorFigure.getSelector()) {
 				return cssValueOverridingDependency;
+			}
+		}
+		return null;
+	}
+	
+	public SelectorFigureConnection getConnectionTo(SelectorFigure selectorFigure) {
+		CSSValueOverridingDependency dependencyTo = getDependencyTo(selectorFigure);
+		for (SelectorFigureConnection selectorFigureConnection : outgoingConnections) {
+			for (CSSValueOverridingDependency cssValueOverridingDependency : selectorFigureConnection.getDependencies()) {
+				if (cssValueOverridingDependency == dependencyTo) {
+					return selectorFigureConnection;
+				}
 			}
 		}
 		return null;
@@ -137,8 +152,16 @@ public class SelectorFigure extends RoundedRectangle {
 		markedDependencies.add(dep);
 	}
 	
-	public boolean isMarkedDependency(CSSValueOverridingDependency dep) {
+	public boolean isReducedDependency(CSSValueOverridingDependency dep) {
 		return markedDependencies.contains(dep);
+	}
+
+	public void highlight() {
+		setForegroundColor(VisualizationConstants.SELECTED_SELECTOR_COLOR);
+	}
+
+	public void unhighlight() {
+		setForegroundColor(VisualizationConstants.SELECTOR_BORDER_COLOR);
 	}
 
 }

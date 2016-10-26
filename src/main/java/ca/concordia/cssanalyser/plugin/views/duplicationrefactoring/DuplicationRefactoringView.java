@@ -13,6 +13,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ICoreRunnable;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
@@ -528,7 +529,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		showDependenciesAction.setEnabled(false);
 		showDependenciesAction.setText(LocalizedStrings.get(Keys.VISUALIZE_DEPENDENCIES));
 		showDependenciesAction.setToolTipText(LocalizedStrings.get(Keys.VISUALIZE_DEPENDENCIES));
-		showDependenciesAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_OBJ_FILE));
+		showDependenciesAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_OBJ_ELEMENT));
 		
 		IEditorPart activeEditor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor();
 		if (activeEditor != null) {
@@ -668,7 +669,9 @@ public class DuplicationRefactoringView extends ViewPart {
 								if (iProgressMonitor.isCanceled())
 									break;
 								for (ItemSet itemSet : isl) {
-									duplicationInfo.add(new DuplicationInfo(itemSet, selectedFile));
+									if (itemSet.size() > 0) {
+										duplicationInfo.add(new DuplicationInfo(itemSet, selectedFile));
+									}
 								}
 							}
 							iProgressMonitor.worked(10);
@@ -762,6 +765,7 @@ public class DuplicationRefactoringView extends ViewPart {
 			CSSParser parser = CSSParserFactory.getCSSParser(CSSParserType.LESS);
 			return parser.parseExternalCSS(selectedFile.getLocation().toOSString());
 		} catch (ParseException e) {
+			
 			ViewsUtil.showDetailedError(e);
 		}
 		return null;
@@ -881,20 +885,24 @@ public class DuplicationRefactoringView extends ViewPart {
 				IProgressService progressService = PlatformUI.getWorkbench().getProgressService();
 				try {
 					progressService.busyCursorWhile(iProgressMonitor -> {
-						iProgressMonitor.beginTask(LocalizedStrings.get(Keys.GETTING_DEPENDENCIES), 100);
-						iProgressMonitor.subTask(LocalizedStrings.get(Keys.PARSING_CSS_FILE));
+						SubMonitor subMonitor = SubMonitor.convert(iProgressMonitor, 100);
+						//iProgressMonitor.beginTask(LocalizedStrings.get(Keys.GETTING_DEPENDENCIES), 100);
+						//iProgressMonitor.subTask(LocalizedStrings.get(Keys.PARSING_CSS_FILE));
+						SubMonitor parsingMonior = subMonitor.split(10).setWorkRemaining(100);
+						parsingMonior.setTaskName(LocalizedStrings.get(Keys.PARSING_CSS_FILE));
 						StyleSheet selectedStyleSheet = getSelectedStyleSheet();
-						iProgressMonitor.worked(20);
-						if (selectedStyleSheet != null && !iProgressMonitor.isCanceled()) {
+						if (selectedStyleSheet != null) {
+							SubMonitor gettingDependenciesMonior = subMonitor.split(10).setWorkRemaining(100);
+							gettingDependenciesMonior.setTaskName(LocalizedStrings.get(Keys.GETTING_DEPENDENCIES));
 							CSSValueOverridingDependencyList dependencies = getOverridingDependencies(selectedStyleSheet);
-							if (iProgressMonitor.isCanceled()) {
-								return;
-							}
+							//gettingDependenciesMonior.worked(100);
+							SubMonitor gettingDependenciesVisualizationMonitor = subMonitor.split(80).setWorkRemaining(100);
+							gettingDependenciesVisualizationMonitor.setTaskName(LocalizedStrings.get(Keys.GENERATING_DEPENDENCY_VISUALIZATION));
 							Display.getDefault().asyncExec(new Runnable() {
 								@Override
 								public void run() {
-									iProgressMonitor.subTask(LocalizedStrings.get(Keys.GENERATING_DEPENDENCY_VISUALIZATION));
-									((DependenciesVisualizationView)overridingDependenciesView).showDependenciesGraph(dependencies, iProgressMonitor);									
+									//iProgressMonitor.subTask(LocalizedStrings.get(Keys.GENERATING_DEPENDENCY_VISUALIZATION));
+									((DependenciesVisualizationView)overridingDependenciesView).showDependenciesGraph(dependencies, subMonitor);									
 								}
 							});
 						}

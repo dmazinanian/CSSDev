@@ -8,32 +8,28 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
-import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.draw2d.ConnectionLayer;
 import org.eclipse.draw2d.FreeformLayer;
 import org.eclipse.draw2d.FreeformLayout;
 import org.eclipse.draw2d.MouseEvent;
 import org.eclipse.draw2d.MouseListener;
-import org.eclipse.draw2d.MouseMotionListener;
 import org.eclipse.draw2d.ScalableFreeformLayeredPane;
-import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.jface.text.Position;
 import org.eclipse.swt.SWT;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.wst.sse.ui.StructuredTextEditor;
 
-import ca.concordia.cssanalyser.cssmodel.selectors.BaseSelector;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
-import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
-import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
+import ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesLegendPane.DependenciesDisplaySettingChangeListener;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSInterSelectorValueOverridingDependency;
-import ca.concordia.cssanalyser.refactoring.dependencies.CSSInterSelectorValueOverridingDependency.InterSelectorDependencyReason;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSIntraSelectorValueOverridingDependency;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependency;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
@@ -44,8 +40,33 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 	private static final int SELECTORS_GAP_Y = 20;
 	private final Map<Selector, SelectorFigure> selectorFigures = new HashMap<>();
 	private final Map<Integer, List<SelectorFigure>> selectorFigureLevels = new HashMap<>();
+	private final DependenciesVisualizationView dependenciesView;
+	private final List<SelectorFigure> selectedSelectorFigures = new ArrayList<>();
+	private final DependenciesDisplaySettingChangeListener dependenciesDisplaySettingChangeListener = new DependenciesDisplaySettingChangeListener() {
+		@Override
+		public void settingsChanged(DependencyType type, boolean value) {
+			switch(type) {
+			case CASCADING:
+				showCascadingConnections = value;
+				break;
+			case SPECIFICITY:
+				showSpecificityConnections = value;
+				break;
+			case IMPORTANCE:
+				showImportanceConnections = value;
+				break;
+			default:
+				break;
+			}
+			resetConnectionsDisplaySettings();
+		}
+	};
+	private boolean showCascadingConnections = true,
+			showSpecificityConnections = true,
+			showImportanceConnections = true;
 
-	public DependenciesFigurePane(CSSValueOverridingDependencyList dependencies, IProgressMonitor iProgressMonitor) {
+	public DependenciesFigurePane(DependenciesVisualizationView dependenciesView, CSSValueOverridingDependencyList dependencies, SubMonitor subMonitor) {
+		this.dependenciesView = dependenciesView;
 		
 		setOpaque(true); // This is necessary for the mouse listener to work
 		DependenciesFigurePaneMouseListener dependenciesFigurePaneMouseListener = new DependenciesFigurePaneMouseListener(this);
@@ -59,156 +80,71 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 		formLayer.setLayoutManager(new FreeformLayout());
 		add(formLayer, "Primary");
 		
-		iProgressMonitor.beginTask(LocalizedStrings.get(Keys.GENERATING_DEPENDENCY_VISUALIZATION), 100);
-				
-		for (CSSValueOverridingDependency cssValueOverridingDependency : dependencies) {
-			if (iProgressMonitor.isCanceled()) {
-				return;
-			}
-			if (cssValueOverridingDependency instanceof CSSIntraSelectorValueOverridingDependency) {
-				CSSIntraSelectorValueOverridingDependency intraSelectorDependency = 
-						(CSSIntraSelectorValueOverridingDependency) cssValueOverridingDependency;
-			
-				Selector selector = getRealSelector(intraSelectorDependency.getSelector1());
-				
-				SelectorFigure selectorFigure = selectorFigures.get(selector);
-				if (selectorFigure == null) {
-					selectorFigure = new SelectorFigure(selector);
-					selectorFigures.put(selector, selectorFigure);
-				}
-				selectorFigure.addIntraSelectorDependency(intraSelectorDependency);
-			} else if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency) {
-				Selector selector1 = getRealSelector(cssValueOverridingDependency.getSelector1());
-				SelectorFigure selector1Figure = selectorFigures.get(selector1);
-				if (selector1Figure == null) {
-					selector1Figure = new SelectorFigure(selector1);
-					selectorFigures.put(selector1, selector1Figure);
-				}
-				selector1Figure.addOutgoingInterSelectorDependency(cssValueOverridingDependency);
-				
-				Selector selector2 = getRealSelector(cssValueOverridingDependency.getSelector2());
-				SelectorFigure selector2Figure = selectorFigures.get(selector2);
-				if (selector2Figure == null) {
-					selector2Figure = new SelectorFigure(selector2);
-					selectorFigures.put(selector2, selector2Figure);
-				}
-				selector2Figure.addIncomingInterSelectorDependency(cssValueOverridingDependency);
-			}
-		}
+		subMonitor.setWorkRemaining(100);
 		
-		// Transitive Reduction
+		createSelectorFiguresFromDependencies(dependencies);
+		
 		applyTransitiveReduction();
 		
-		iProgressMonitor.worked(20);
+		subMonitor.worked(20);
 		
 		initializeSelectorFigureLevels();
 		
-		int maxWidth = getMaxLayerWidth();
+		addSelectorFigures(formLayer);
+		addSelectorFigureListeners(dependenciesFigurePaneMouseListener);
 		
-		int lastLevelY = SELECTORS_GAP_Y;
+		subMonitor.worked(30);
 		
-		for (int level : selectorFigureLevels.keySet()) {
-			int width = getLevelWidth(level);
-			int startX = (maxWidth - width) / 2 + SELECTORS_GAP_X;
-			
-			int xSoFar = 0;
-			for (SelectorFigure selectorFigure : selectorFigureLevels.get(level)) {
-				formLayer.add(selectorFigure, new Rectangle(startX + xSoFar, lastLevelY, -1, -1));
-				xSoFar += selectorFigure.getPreferredSize().width() + SELECTORS_GAP_X;
-			}
-			
-			lastLevelY += getLevelHight(level) + SELECTORS_GAP_Y;
-		}
+		addConnections(connections);
 		
-		formLayer.validate();
+		subMonitor.done();
 		
-		if (iProgressMonitor.isCanceled()) {
-			return;
-		}
-		iProgressMonitor.worked(30);
-		
-		for (SelectorFigure sourceFigure : selectorFigures.values()) {
-			if (iProgressMonitor.isCanceled()) {
-				return;
-			}
-			Point source = new Point(sourceFigure.getLocation().x + sourceFigure.getPreferredSize().width / 2,
-					sourceFigure.getLocation().y + sourceFigure.getPreferredSize().height);
-			for (CSSValueOverridingDependency cssValueOverridingDependency : sourceFigure.getOutgoingInterSelectorDependencies()) {
-				if (!sourceFigure.isMarkedDependency(cssValueOverridingDependency)) {
-					Selector endSelector = getRealSelector(cssValueOverridingDependency.getSelector2());
-					SelectorFigure destinationFigure = selectorFigures.get(endSelector);
-					Point destination = new Point(destinationFigure.getLocation().x + destinationFigure.getPreferredSize().width / 2, 
-							destinationFigure.getLocation().y /*+ destinationFigure.getPreferredSize().height / 2*/);
-					RoundedConnection connection = new RoundedConnection(source, destination, 0 - 0);
-					if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency) {
-						CSSInterSelectorValueOverridingDependency cssInterSelectorValueOverridingDependency = 
-								(CSSInterSelectorValueOverridingDependency) cssValueOverridingDependency;
-						if (cssInterSelectorValueOverridingDependency.getDependencyReason() == InterSelectorDependencyReason.DUE_TO_CASCADING) {
-							connection.setForegroundColor(VisualizationConstants.CASCADING_DEPENDENCY_COLOR);
-						} else if (cssInterSelectorValueOverridingDependency.getDependencyReason() == InterSelectorDependencyReason.DUE_TO_SPECIFICITY) {
-							connection.setForegroundColor(VisualizationConstants.SPECIFICITY_DEPENDENCY_COLOR);
-						}
-						if (!cssInterSelectorValueOverridingDependency.areMediaQueryListsEqual()) {
-							connection.setLineStyle(SWT.LINE_DASH);
+		hasLoops();
+	}
+
+	private void hasLoops() {
+		for (SelectorFigure selectorFigure : selectorFigures.values()) {
+			if (selectorFigure.getIncomingConnections().size() == 0) {
+				Set<Selector> visited = new HashSet<>();
+				visited.add(selectorFigure.getSelector());
+				Stack<SelectorFigure> stack = new Stack<>();
+				stack.push(selectorFigure);
+				while (!stack.isEmpty()) {
+					SelectorFigure currentFigure = stack.pop();
+					for (SelectorFigureConnection selectorFigureConnection : currentFigure.getOutgoingConnections()) {
+						SelectorFigure destinationFigure = selectorFigureConnection.getDestinationFigure();
+						if (!visited.contains(destinationFigure.getSelector())) {
+							stack.push(destinationFigure);
+							visited.add(destinationFigure.getSelector());
 						}
 					}
-					sourceFigure.addOutgoingConnection(connection);
-					destinationFigure.addIncomingConnection(connection);
-
-					unhover(connection);
-					connections.add(connection);
-					connection.addMouseMotionListener(new MouseMotionListener() {
-
-						@Override
-						public void mouseMoved(MouseEvent arg0) {
-							if (connection.pointIsIn(arg0.x, arg0.y)) {
-								hover(connection);
-							} else {
-								unhover(connection);
-							}
-							dependenciesFigurePaneMouseListener.mouseMoved(arg0);
-						}
-
-						@Override
-						public void mouseHover(MouseEvent arg0) {}
-
-						@Override
-						public void mouseExited(MouseEvent arg0) {
-							unhover(connection);
-						}
-
-						@Override
-						public void mouseEntered(MouseEvent arg0) {}
-
-						@Override
-						public void mouseDragged(MouseEvent arg0) {
-							dependenciesFigurePaneMouseListener.mouseDragged(arg0);
-						}
-					});
 				}
+				
 			}
+		}
+	}
 
-			sourceFigure.addMouseListener(new  MouseListener() {
-				
+	private void addSelectorFigureListeners(DependenciesFigurePaneMouseListener dependenciesFigurePaneMouseListener) {
+		for (SelectorFigure selectorFigure : selectorFigures.values()) {
+			selectorFigure.addMouseListener(new  MouseListener() {
+
 				private boolean shouldHoverOn = true;
-				
+
 				@Override
 				public void mouseReleased(MouseEvent arg0) {
 					if (shouldHoverOn) {
-						unhoverAllConnections(sourceFigure);
-						dependenciesFigurePaneMouseListener.mouseReleased(arg0);
+						unhoverAllConnections(selectorFigure);
 					}
 				}
-				
+
 				@Override
 				public void mousePressed(MouseEvent arg0) { 
-					hoverAllConnections(sourceFigure);
-					dependenciesFigurePaneMouseListener.mousePressed(arg0);
+					hoverAllConnections(selectorFigure);
 				}
 
 				@Override
 				public void mouseDoubleClicked(MouseEvent arg0) {
-					Selector selector = sourceFigure.getSelector();
+					Selector selector = selectorFigure.getSelector();
 					if (selector != null) {
 						if ((arg0.getState() & SWT.CTRL) != 0) {
 							IEditorPart editor = ViewsUtil.openEditor(selector.getParentStyleSheet().getFilePath());
@@ -218,48 +154,175 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 							AnnotationsUtil.setAnnotations(annotations, (StructuredTextEditor)editor);
 						} else {
 							if (shouldHoverOn) {
-								hoverAllConnections(sourceFigure);
+								disableAllConnectionsExceptFor(selectorFigure);
+								hoverAllConnections(selectorFigure);
 							} else {
-								unhoverAllConnections(sourceFigure);
+								enableAllConnectionsExceptFor(selectorFigure);
+								unhoverAllConnections(selectorFigure);
 							}
 							shouldHoverOn = !shouldHoverOn;
 						}
 					}
 				}
 			});
-			
-			sourceFigure.addMouseMotionListener(new MouseMotionListener() {
-				@Override
-				public void mouseMoved(MouseEvent arg0) {
-					arg0.consume();
+			selectorFigure.addMouseListener(dependenciesFigurePaneMouseListener);
+			selectorFigure.addMouseMotionListener(dependenciesFigurePaneMouseListener);
+		}
+	}
+
+	private void addConnections(ConnectionLayer connections) {
+		for (SelectorFigure sourceFigure : selectorFigures.values()) {
+			addInterSelectorConnections(connections, sourceFigure);
+			addIntraSelectorConnections(connections, sourceFigure);
+		}
+	}
+
+	private void addIntraSelectorConnections(ConnectionLayer connections, SelectorFigure selectorFigure) {
+		List<CSSIntraSelectorValueOverridingDependency> dependencies = selectorFigure.getIntraSelectorValueOverridingDependencies();
+		if (dependencies.size() > 0) {
+			SelectorFigureConnection connection = new SelectorFigureConnection(selectorFigure, selectorFigure);
+			connection.setAntialias(SWT.ON);
+			connection.unhover();
+			connection.setConnectionType(DependencyType.CASCADING);
+			selectorFigure.addOutgoingConnection(connection);
+			selectorFigure.addIncomingConnection(connection);
+			DepdendencyDetailsFigure toolTipFigure = null; 
+			for (CSSValueOverridingDependency dependency : dependencies) {
+				if (toolTipFigure == null) {
+					toolTipFigure = new DepdendencyDetailsFigure(dependency);
+				} else {
+					toolTipFigure.addDependency(dependency);
 				}
-				
-				@Override
-				public void mouseHover(MouseEvent arg0) {
-					arg0.consume();
+				connection.addDependency(dependency);
+			}
+			connection.setToolTip(toolTipFigure);
+			connections.add(connection);
+		}
+	}
+
+	private void addInterSelectorConnections(ConnectionLayer connections, SelectorFigure sourceFigure) {
+		for (CSSValueOverridingDependency cssValueOverridingDependency : sourceFigure.getOutgoingInterSelectorDependencies()) {
+			CSSInterSelectorValueOverridingDependency cssInterSelectorValueOverridingDependency = 
+							(CSSInterSelectorValueOverridingDependency) cssValueOverridingDependency;
+			if (!sourceFigure.isReducedDependency(cssValueOverridingDependency)) {
+				SelectorFigure targetFigure = selectorFigures.get(cssValueOverridingDependency.getRealSelector2());
+				SelectorFigureConnection connection = sourceFigure.getConnectionTo(targetFigure);
+				if (connection != null) {
+					if (connection.getToolTip() != null) {
+						DepdendencyDetailsFigure depdendencyDetailsFigure = (DepdendencyDetailsFigure)connection.getToolTip();
+						depdendencyDetailsFigure.addDependency(cssValueOverridingDependency);
+					}
+				} else {
+					connection = new SelectorFigureConnection(sourceFigure, targetFigure);
+					connection.setConnectionType(getDependencyType(cssInterSelectorValueOverridingDependency));
+					if (!cssInterSelectorValueOverridingDependency.areMediaQueryListsEqual()) {
+						connection.setLineStyle(SWT.LINE_DASH);
+					}
+					connection.setAntialias(SWT.ON);
+					connection.unhover();
+					sourceFigure.addOutgoingConnection(connection);
+					targetFigure.addIncomingConnection(connection);
+					connection.setToolTip(new DepdendencyDetailsFigure(cssValueOverridingDependency));
+					connections.add(connection);
 				}
-				
-				@Override
-				public void mouseExited(MouseEvent arg0) {
-					arg0.consume();
-				}
-				
-				@Override
-				public void mouseEntered(MouseEvent arg0) {
-					arg0.consume();
-				}
-				
-				@Override
-				public void mouseDragged(MouseEvent arg0) {
-					dependenciesFigurePaneMouseListener.mouseDragged(arg0);
-				}
-			});
+				connection.addDependency(cssValueOverridingDependency);
+			}
+		}
+	}
+
+	private DependencyType getDependencyType(CSSInterSelectorValueOverridingDependency cssInterSelectorValueOverridingDependency) {
+		DependencyType dependencyType = null;
+		switch (cssInterSelectorValueOverridingDependency.getDependencyReason()) {
+		case DUE_TO_CASCADING:
+			dependencyType = DependencyType.CASCADING;
+			break;
+		case DUE_TO_SPECIFICITY:
+			dependencyType = DependencyType.SPECIFICITY;
+			break;
+		case DUE_TO_IMPORTANCE:
+			dependencyType = DependencyType.IMPORTANCE;
+			break;
+		default:
+			break;
+		}
+		return dependencyType;
+	}
+
+	private void addSelectorFigures(FreeformLayer formLayer) {
+		int maxWidth = getMaxLayerWidth();
+		
+		int lastLevelY = SELECTORS_GAP_Y;
+		
+		for (int level : selectorFigureLevels.keySet()) {
+			int levelWidth = getLevelWidth(level);
+			int startX = (maxWidth - levelWidth) / 2 + SELECTORS_GAP_X;
+			int xSoFar = 0;
+			for (SelectorFigure selectorFigure : selectorFigureLevels.get(level)) {
+				formLayer.add(selectorFigure, new Rectangle(startX + xSoFar, lastLevelY, -1, -1));
+				xSoFar += selectorFigure.getPreferredSize().width() + SELECTORS_GAP_X;
+			}
+			lastLevelY += getLevelHight(level) + SELECTORS_GAP_Y;
 		}
 		
-		iProgressMonitor.done();
-		
+		formLayer.validate();
 	}
-	
+
+	private void createSelectorFiguresFromDependencies(CSSValueOverridingDependencyList dependencies) {
+		Set<Integer> visitedDependenciesHashCodes = new HashSet<>();
+		for (CSSValueOverridingDependency cssValueOverridingDependency : dependencies) {
+			if (!visitedDependenciesHashCodes.contains(cssValueOverridingDependency.getSpecialHashCode())) {
+				visitedDependenciesHashCodes.add(cssValueOverridingDependency.getSpecialHashCode());
+				if (cssValueOverridingDependency instanceof CSSIntraSelectorValueOverridingDependency) {
+					CSSIntraSelectorValueOverridingDependency intraSelectorDependency = 
+							(CSSIntraSelectorValueOverridingDependency) cssValueOverridingDependency;
+					Selector selector = intraSelectorDependency.getRealSelector1();
+					SelectorFigure selectorFigure = selectorFigures.get(selector);
+					if (selectorFigure == null) {
+						selectorFigure = new SelectorFigure(selector);
+						selectorFigures.put(selector, selectorFigure);
+					}
+					selectorFigure.addIntraSelectorDependency(intraSelectorDependency);
+				} else if (cssValueOverridingDependency instanceof CSSInterSelectorValueOverridingDependency) {
+					Selector selector1 = cssValueOverridingDependency.getRealSelector1();
+					SelectorFigure selector1Figure = selectorFigures.get(selector1);
+					if (selector1Figure == null) {
+						selector1Figure = new SelectorFigure(selector1);
+						selectorFigures.put(selector1, selector1Figure);
+					}
+					selector1Figure.addOutgoingInterSelectorDependency(cssValueOverridingDependency);
+
+					Selector selector2 = cssValueOverridingDependency.getRealSelector2();
+					SelectorFigure selector2Figure = selectorFigures.get(selector2);
+					if (selector2Figure == null) {
+						selector2Figure = new SelectorFigure(selector2);
+						selectorFigures.put(selector2, selector2Figure);
+					}
+					selector2Figure.addIncomingInterSelectorDependency(cssValueOverridingDependency);
+				}
+			}
+		}
+	}
+
+	protected void resetConnectionsDisplaySettings() {
+		for (SelectorFigure selectorFigure : selectorFigures.values()) {
+			for (SelectorFigureConnection selectorFigureConnection : selectorFigure.getOutgoingConnections()) {
+				switch (selectorFigureConnection.getDependencyType()) {
+				case CASCADING:
+					selectorFigureConnection.setVisible(showCascadingConnections);
+					break;
+				case SPECIFICITY:
+					selectorFigureConnection.setVisible(showSpecificityConnections);
+					break;
+				case IMPORTANCE:
+					selectorFigureConnection.setVisible(showImportanceConnections);
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+
 	private int getLevelHight(int level) {
 		int levelHeight = -1;
 		List<SelectorFigure> figures = selectorFigureLevels.get(level);
@@ -291,88 +354,178 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 	}
 	
 	private int getMaxLayerWidth() {
+		if (!selectorFigureLevels.isEmpty()) {
 		return selectorFigureLevels.keySet().stream()
 			.map(level -> getLevelWidth(level))
 			.max(Comparator.naturalOrder())
 			.get();
+		} else {
+			return 0;
+		}
 	}
 
 	private void applyTransitiveReduction() {
-		// Transitive Reduction
 		for (SelectorFigure selectorFigure : selectorFigures.values()) {
-			for (CSSValueOverridingDependency cssValueOverridingDependency : selectorFigure.getOutgoingInterSelectorDependencies()) {
-				SelectorFigure targetSelectorFigure = selectorFigures.get(getRealSelector(cssValueOverridingDependency.getSelector2()));
-				for (CSSValueOverridingDependency cssValueOverridingDependency2 : targetSelectorFigure.getOutgoingInterSelectorDependencies()) {
-					CSSValueOverridingDependency dep = selectorFigure.gesDependencyTo(selectorFigures.get(getRealSelector(cssValueOverridingDependency2.getSelector2())));
-					if (dep != null) {
-						selectorFigure.markReducedDependency(dep);
+			Set<Selector> indirectReachableSelectors = getIndirectReachableSelectors(selectorFigure);
+			for (Selector selector : indirectReachableSelectors) {
+				CSSValueOverridingDependency dependencyTo = selectorFigure.getDependencyTo(selectorFigures.get(selector));
+				if (dependencyTo != null) {
+					selectorFigure.markReducedDependency(dependencyTo);
+				}
+			}
+		}
+	}
+
+	private Set<Selector> getIndirectReachableSelectors(SelectorFigure selectorFigure) {
+		Set<Selector> toReturn = new HashSet<>();
+		Set<Selector> whatToExclude = new HashSet<>();
+		whatToExclude.add(selectorFigure.getSelector());
+		for (CSSValueOverridingDependency outGoingDependency : selectorFigure.getOutgoingInterSelectorDependencies()) {
+			toReturn.addAll(getReachableSelectorFigures(outGoingDependency, whatToExclude));
+		}
+		return toReturn;
+	}
+
+	private Set<Selector> getReachableSelectorFigures(CSSValueOverridingDependency incomingDependency, Set<Selector> whatToExclude) {
+		Set<Selector> toReturn = new HashSet<>();
+		SelectorFigure selectorFigure = selectorFigures.get(incomingDependency.getRealSelector2());
+		selectorFigure.getOutgoingInterSelectorDependencies().forEach(outGoingDependency -> {
+			Set<String> labels1 = new HashSet<>(incomingDependency.getDependencyLabels());
+			Set<String> labels2 = new HashSet<>(outGoingDependency.getDependencyLabels());
+			labels1.retainAll(labels2);
+			if (labels1.size() > 0) {
+				Selector targetSelector = outGoingDependency.getRealSelector2();
+				if (!whatToExclude.contains(targetSelector)) {
+					whatToExclude.add(targetSelector);
+					toReturn.add(targetSelector);
+					toReturn.addAll(getReachableSelectorFigures(outGoingDependency, whatToExclude));
+				}
+			}
+		});
+		return toReturn;
+	}
+
+	private void initializeSelectorFigureLevels() {
+		List<SelectorFigure> withOnlyIntraSelectorDependencies = new ArrayList<>();
+		List<SelectorFigure> postponedForLastLayer = new ArrayList<>();
+		Set<Selector> visitedSelectors = new HashSet<>();
+		for (SelectorFigure selectorFigure : selectorFigures.values()) {
+			boolean onlyHasIntraSelectorDependencies = selectorFigure.getIncomingInterSelectorDependencies().size() == 0 &&
+					selectorFigure.getOutgoingInterSelectorDependencies().size() == 0;
+			if (onlyHasIntraSelectorDependencies) {
+				withOnlyIntraSelectorDependencies.add(selectorFigure);
+			} else {
+				if (selectorFigure.getIncomingInterSelectorDependencies().size() == 0) {// Root, first level 
+					addChildFigures(selectorFigure, 0, visitedSelectors, postponedForLastLayer);
+				}
+			}
+		}
+		int lastLevel = selectorFigureLevels.size();
+		for (SelectorFigure selectorFigure : postponedForLastLayer) {
+			addSelectorFigureToLevel(selectorFigure, lastLevel);
+		}
+		for (SelectorFigure selectorFigure : withOnlyIntraSelectorDependencies) {
+			addSelectorFigureToLevel(selectorFigure, lastLevel + 1);
+		}
+	}
+
+	private void addChildFigures(SelectorFigure selectorFigure, int level, Set<Selector> markedSelectors, List<SelectorFigure> postponedForLastLayer) {
+		if (!markedSelectors.contains(selectorFigure.getSelector())) {
+			markedSelectors.add(selectorFigure.getSelector());
+			if (getUnmarkedOutgoingDependencies(selectorFigure).size() == 0) {
+				postponedForLastLayer.add(selectorFigure);
+			} else {
+				addSelectorFigureToLevel(selectorFigure, level);
+				for (CSSValueOverridingDependency outgoingDependency : selectorFigure.getOutgoingInterSelectorDependencies()) {
+					if (!selectorFigure.isReducedDependency(outgoingDependency)) {
+						SelectorFigure childFigure = selectorFigures.get(outgoingDependency.getRealSelector2());
+						addChildFigures(childFigure, level + 1, markedSelectors, postponedForLastLayer);
 					}
 				}
 			}
 		}
 	}
 
-	private void initializeSelectorFigureLevels() {
-		for (SelectorFigure selectorFigure : selectorFigures.values()) {
-			List<CSSValueOverridingDependency> incomingDependencies = selectorFigure.getIncomingInterSelectorDependencies();
-			if (incomingDependencies.size() == 0) {// Rroot, first level 
-				addChildFigures(selectorFigure, 0, new HashSet<>());
+	private List<CSSValueOverridingDependency> getUnmarkedOutgoingDependencies(SelectorFigure selectorFigure) {
+		List<CSSValueOverridingDependency> toReturn = new ArrayList<>();
+		for (CSSValueOverridingDependency cssValueOverridingDependency : selectorFigure.getOutgoingInterSelectorDependencies()) {
+			if (!selectorFigure.isReducedDependency(cssValueOverridingDependency)) {
+				toReturn.add(cssValueOverridingDependency);
 			}
 		}
+		return toReturn;
 	}
 
-	private void addChildFigures(SelectorFigure selectorFigure, int level, Set<Selector> markedSelectors) {
-		if (!markedSelectors.contains(getRealSelector(selectorFigure.getSelector()))) {
-			markedSelectors.add(getRealSelector(selectorFigure.getSelector()));
-			List<SelectorFigure> levelFigures = selectorFigureLevels.get(level);
-			if (levelFigures == null) {
-				levelFigures = new ArrayList<>();
-				selectorFigureLevels.put(level, levelFigures);
-			}
-			levelFigures.add(selectorFigure);
-			for (CSSValueOverridingDependency outgoingDependency : selectorFigure.getOutgoingInterSelectorDependencies()) {
-				SelectorFigure childFigure = selectorFigures.get(getRealSelector(outgoingDependency.getSelector2()));
-				addChildFigures(childFigure, level + 1, markedSelectors);
-			}
+	private void addSelectorFigureToLevel(SelectorFigure selectorFigure, int level) {
+		List<SelectorFigure> levelFigures = selectorFigureLevels.get(level);
+		if (levelFigures == null) {
+			levelFigures = new ArrayList<>();
+			selectorFigureLevels.put(level, levelFigures);
 		}
-	}
-	
-	private void hover(RoundedConnection connection) {
-		connection.setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_HOVERED);
-		connection.setLineWidth(VisualizationConstants.DEPENDENCY_CONNECTIONS_WIDTH_HOVERED);
-	}
-	
-	private void unhover(RoundedConnection connection) {
-		connection.setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_INITIAL);
-		connection.setLineWidth(VisualizationConstants.DEPENDENCY_CONNECTIONS_WIDTH_INITIAL);
+		levelFigures.add(selectorFigure);
 	}
 	
 	private void hoverAllConnections(SelectorFigure selectorFigure) {
-		for (RoundedConnection verticalRoundedConnection : selectorFigure.getOutgoingConnections()) {
-			hover(verticalRoundedConnection);
-		}
-		for (RoundedConnection verticalRoundedConnection : selectorFigure.getIncomingConnections()) {
-			hover(verticalRoundedConnection);
-		}
+		selectorFigure.getOutgoingConnections().forEach(connection -> connection.hover());
+		selectorFigure.getIncomingConnections().forEach(connection -> connection.hover());
 	}
 	
 	private void unhoverAllConnections(SelectorFigure selectorFigure) {
-		for (RoundedConnection verticalRoundedConnection : selectorFigure.getOutgoingConnections()) {
-			unhover(verticalRoundedConnection);
-		}
-		for (RoundedConnection verticalRoundedConnection : selectorFigure.getIncomingConnections()) {
-			unhover(verticalRoundedConnection);
-		}
+		selectorFigure.getOutgoingConnections().forEach(connection -> connection.unhover());
+		selectorFigure.getIncomingConnections().forEach(connection -> connection.unhover());		
+	}
+	
+	private void disableAllConnectionsExceptFor(SelectorFigure selectorFigure) {
+		setAllConnectionsEnabledExceptFor(selectorFigure, false);
+	}
+	
+	private void enableAllConnectionsExceptFor(SelectorFigure selectorFigure) {
+		setAllConnectionsEnabledExceptFor(selectorFigure, true);
+	}
+	
+	private void setAllConnectionsEnabledExceptFor(SelectorFigure selectorFigure, boolean enabled) {
+		selectorFigures.values().stream().filter(figure -> figure != selectorFigure)
+		.forEach(figure -> {
+			figure.getOutgoingConnections().stream().filter(connection -> connection.getDestinationFigure() != selectorFigure)
+				.forEach(connection -> connection.setEnabled(enabled));
+			figure.getIncomingConnections().stream().filter(connection -> connection.getSourceFigure() != selectorFigure)
+				.forEach(connection -> connection.setEnabled(enabled));
+		});
 	}
 
-	static Selector getRealSelector(Selector selector) {
-		if (selector instanceof BaseSelector) {
-			BaseSelector baseSelector = (BaseSelector) selector;
-			if (baseSelector.getParentGroupingSelector() != null) {
-				selector = baseSelector.getParentGroupingSelector();
+	public DependenciesDisplaySettingChangeListener getDependenciesDisplaySettingsChangedListener() {
+		return dependenciesDisplaySettingChangeListener;
+	}
+	
+
+	public void performSearch(String selectorNameToSearch, String mediaToSearch) {
+		unhiglightFigures();
+		boolean found = false;
+		for (SelectorFigure selectorFigure : selectorFigures.values()) {
+			Selector selector = selectorFigure.getSelector();
+			if (selector.toString().contains(selectorNameToSearch.trim()))  {
+				if (!"".equals(mediaToSearch.trim()) &&
+						!selector.getMediaQueryLists().toString().contains(mediaToSearch)) {
+					continue;
+				}
+				selectorFigure.highlight();
+				selectedSelectorFigures.add(selectorFigure);
+				found = true;
 			}
 		}
-		return selector;
+		if (found) {
+			dependenciesView.setClearResultsEnabled();
+		}
+	}
+	
+	private void unhiglightFigures() {
+		for (SelectorFigure selectorFigure : selectedSelectorFigures) {
+			selectorFigure.unhighlight();
+		}
+		selectedSelectorFigures.clear();
 	}
 
+	public void clearSearchResults() {
+		unhiglightFigures();
+	}
 }

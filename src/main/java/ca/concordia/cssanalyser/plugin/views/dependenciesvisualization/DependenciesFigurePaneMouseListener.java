@@ -1,10 +1,14 @@
 package ca.concordia.cssanalyser.plugin.views.dependenciesvisualization;
 
 import org.eclipse.draw2d.IFigure;
+import org.eclipse.draw2d.LayoutManager;
 import org.eclipse.draw2d.MouseEvent;
 import org.eclipse.draw2d.MouseListener;
 import org.eclipse.draw2d.MouseMotionListener;
+import org.eclipse.draw2d.UpdateManager;
+import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
+import org.eclipse.draw2d.geometry.Rectangle;
 
 public class DependenciesFigurePaneMouseListener implements MouseMotionListener, MouseListener {
 
@@ -32,16 +36,38 @@ public class DependenciesFigurePaneMouseListener implements MouseMotionListener,
 	}
 
 	@Override
-	public void mouseDragged(MouseEvent arg0) {
-		if (lastClickedPosition != null && lastClickedFigureAtLocation != null) {
-			if (lastClickedFigureAtLocation instanceof SelectorFigure) {
-				SelectorFigure selectorFigure = (SelectorFigure) lastClickedFigureAtLocation;
-				selectorFigure.translate(arg0.x - lastClickedPosition.x, arg0.y - lastClickedPosition.y);
+	public void mouseDragged(MouseEvent event) {
+		Point newLocation = event.getLocation();
+		
+		if (lastClickedPosition != null && newLocation != null && lastClickedFigureAtLocation != null) {
+			if (lastClickedFigureAtLocation.getClass() == SelectorFigure.class) {
+				Dimension offset = newLocation.getDifference(lastClickedPosition);
+				SelectorFigure selectorFigure = (SelectorFigure)lastClickedFigureAtLocation;
+				UpdateManager updateManager = lastClickedFigureAtLocation.getParent().getUpdateManager();
+				LayoutManager layoutMgr = lastClickedFigureAtLocation.getParent().getLayoutManager();
+				Rectangle bounds = lastClickedFigureAtLocation.getBounds().getCopy();
+				updateManager.addDirtyRegion(lastClickedFigureAtLocation.getParent(), bounds);
+				for (SelectorFigureConnection connection : selectorFigure.getOutgoingConnections()) {
+					connection.getParent().getUpdateManager().addDirtyRegion(connection.getParent(), connection.getBounds().getCopy());
+				}
+				for (SelectorFigureConnection connection : selectorFigure.getIncomingConnections()) {
+					connection.getParent().getUpdateManager().addDirtyRegion(connection.getParent(), connection.getBounds().getCopy());
+				}
+				selectorFigure.translate(offset.width, offset.height);
 				selectorFigure.resetConnectionsPositions();
-				lastClickedPosition = arg0.getLocation();
-				dependenciesPane.repaint();
+				bounds = bounds.getCopy().translate(offset.width, offset.height);
+				layoutMgr.setConstraint(selectorFigure, bounds);
+				updateManager.addDirtyRegion(lastClickedFigureAtLocation.getParent(), bounds);
+				for (SelectorFigureConnection connection : selectorFigure.getOutgoingConnections()) {
+					connection.getParent().getUpdateManager().addDirtyRegion(connection.getParent(), connection.getBounds().getCopy());
+				}
+				for (SelectorFigureConnection connection : selectorFigure.getIncomingConnections()) {
+					connection.getParent().getUpdateManager().addDirtyRegion(connection.getParent(), connection.getBounds().getCopy());
+				}
 			}
 		}
+		lastClickedPosition = newLocation;
+		event.consume();
 	}
 
 	@Override
