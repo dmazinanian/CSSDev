@@ -75,7 +75,8 @@ public class Crawler {
 
 	private CrawljaxConfiguration getCrawljaxBuilder() {
 		String url = "";
-		if (options.getUrl().toLowerCase().startsWith("http://")) {
+		if (options.getUrl().toLowerCase().startsWith("http://") ||
+				options.getUrl().toLowerCase().startsWith("https://")) {
 			url = options.getUrl();
 		} else {
 			server = new Server(8080);
