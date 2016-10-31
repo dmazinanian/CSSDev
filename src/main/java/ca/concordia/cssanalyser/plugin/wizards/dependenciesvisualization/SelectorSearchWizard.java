@@ -21,7 +21,7 @@ public class SelectorSearchWizard extends Wizard {
 	
 	@Override
 	public boolean performFinish() {
-		dependenciesView.performSearch(selectorSearchPage.getSelectorNameToSearch(),
+		dependenciesView.performSelectorSearch(selectorSearchPage.getSelectorNameToSearch(),
 				selectorSearchPage.getMediaToSearch());
 		return true;
 	}

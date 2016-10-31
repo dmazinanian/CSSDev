@@ -1,2 +1,0 @@
-include ':css-analyser'
-project(':css-analyser').projectDir = new File(settingsDir, '../css-analyser')

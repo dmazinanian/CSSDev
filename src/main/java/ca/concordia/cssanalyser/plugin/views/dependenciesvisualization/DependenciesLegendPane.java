@@ -134,7 +134,16 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		Label importanceConnectionLabel = new Label(LocalizedStrings.get(Keys.IMPORTANCE_DEPENDENCY));
 		importanceConnectionLabel.addMouseListener(new ItemClickedMouseListener(DependencyType.IMPORTANCE));
 		importanceConnectionLabel.setCursor(Cursors.HAND);
-		legendContents.add(importanceConnectionLabel);	
+		legendContents.add(importanceConnectionLabel);
+		
+		QuadraticConnection mediaQueryConnection = new QuadraticConnection(new Point(11, 104), new Point(29, 108), new Point(15, 106));
+		mediaQueryConnection.setForegroundColor(VisualizationConstants.MEDIA_QEURY_DEPENDENCY_COLOR);
+		mediaQueryConnection.setLineStyle(SWT.LINE_DASH);
+		mediaQueryConnection.setAntialias(SWT.ON);
+		legendContents.add(mediaQueryConnection);
+		
+		Label  mediaQueryLabel = new Label(LocalizedStrings.get(Keys.MEDIA_QUERY_DEPENDENCY));
+		legendContents.add(mediaQueryLabel);
 		
 		formLayer.add(roundedRectangle, new Rectangle(0, 0, -1, -1));
 		

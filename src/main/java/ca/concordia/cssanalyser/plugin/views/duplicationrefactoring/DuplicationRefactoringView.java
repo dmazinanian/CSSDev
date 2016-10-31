@@ -76,6 +76,8 @@ import org.eclipse.ui.progress.IProgressService;
 import org.eclipse.wst.sse.ui.StructuredTextEditor;
 import org.w3c.dom.Document;
 
+import com.crawljax.core.CrawlSession;
+
 import ca.concordia.cssanalyser.analyser.duplication.DuplicationDetector;
 import ca.concordia.cssanalyser.analyser.duplication.items.Item;
 import ca.concordia.cssanalyser.analyser.duplication.items.ItemSet;
@@ -100,7 +102,7 @@ import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinMigrationRefactor
 import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
-import ca.concordia.cssanalyser.plugin.utility.DuplicationResultsStorage;
+import ca.concordia.cssanalyser.plugin.utility.AnalysisResultsStorage;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
@@ -130,10 +132,11 @@ public class DuplicationRefactoringView extends ViewPart {
 	private boolean allowDifferencesInValues;
 	private boolean liveDetection;
 	private List<CSSAnnotation> currentAnnotations = new ArrayList<>();
-	private Map<IFile, DuplicationResultsStorage> fileToResultsMap = new HashMap<>();
+	private Map<IFile, AnalysisResultsStorage> fileToResultsMap = new HashMap<>();
 	private Label numberOfOpportunitiesLabel;
 	private AnalysisOptions analysisOptions = new AnalysisOptions();
-	private Set<Document> documents = new HashSet<>();
+	private List<Document> documents = new ArrayList<>();
+	private CrawlSession session;
 	
 	private IPropertyListener propertyListener = new IPropertyListener() {
 		@Override
@@ -277,7 +280,7 @@ public class DuplicationRefactoringView extends ViewPart {
 	
 	@Override
 	public void dispose() {
-		IEditorReference editorReference = getEditorReferenceForIFileIfOpened(selectedFile);
+		IEditorReference editorReference = ViewsUtil.getEditorReferenceForIFileIfOpened(selectedFile);
 		if (editorReference != null) {
 			clearAnnotations((StructuredTextEditor)editorReference.getEditor(false));
 		}
@@ -421,7 +424,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		clearAnnotationsAction = new Action() {
 			@Override
 			public void run() {
-				IEditorReference editorReference = getEditorReferenceForIFileIfOpened(selectedFile);
+				IEditorReference editorReference = ViewsUtil.getEditorReferenceForIFileIfOpened(selectedFile);
 				if (editorReference != null) {
 					clearAnnotations((StructuredTextEditor)editorReference.getEditor(false));	
 				}
@@ -435,7 +438,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		clearResultsAction = new Action() {
 			@Override
 			public void run() {
-				IEditorReference editorReference = getEditorReferenceForIFileIfOpened(selectedFile);
+				IEditorReference editorReference = ViewsUtil.getEditorReferenceForIFileIfOpened(selectedFile);
 				if (editorReference != null) {
 					StructuredTextEditor ste = (StructuredTextEditor)editorReference.getEditor(false);
 					clearResults(ste);
@@ -496,7 +499,7 @@ public class DuplicationRefactoringView extends ViewPart {
 						if (!selectedItemSet.containsDifferencesInValues()) {
 							DuplicationRefactoring refactoring;
 							if (documents.size() > 0) {
-								CSSValueOverridingDependencyList dependencies = getOverridingDependencies(getSelectedStyleSheet());
+								CSSValueOverridingDependencyList dependencies = getOverridingDependencies();
 								refactoring = new GroupingRefactoring(selectedDuplicationInfo, dependencies);
 							} else {
 								refactoring = new GroupingRefactoring(selectedDuplicationInfo);
@@ -596,19 +599,19 @@ public class DuplicationRefactoringView extends ViewPart {
 		if (file == selectedFile)
 			return;
 		if (selectedFile != null) {
-			IEditorReference editorReference = getEditorReferenceForIFileIfOpened(selectedFile);
+			IEditorReference editorReference = ViewsUtil.getEditorReferenceForIFileIfOpened(selectedFile);
 			if (editorReference != null) {
 				StructuredTextEditor ste = (StructuredTextEditor)editorReference.getEditor(false);
 				List<DuplicationInfo> duplicationInfoList = ((DuplicationViewContentProvider)viewer.getContentProvider()).duplicationInfoList;
-				fileToResultsMap.put(selectedFile, new DuplicationResultsStorage(selectedFile, duplicationInfoList, currentAnnotations));
+				fileToResultsMap.put(selectedFile, new AnalysisResultsStorage(selectedFile, duplicationInfoList, currentAnnotations));
 				clearResults(ste);
 			}
 		}
 		if (file != null) {
 			if (fileToResultsMap.containsKey(file)) {
-				DuplicationResultsStorage resultsStorage = fileToResultsMap.get(file);
+				AnalysisResultsStorage resultsStorage = fileToResultsMap.get(file);
 				fillTableViewer(resultsStorage.getDuplicationInfoList());
-				IEditorReference editorReference = getEditorReferenceForIFileIfOpened(file);
+				IEditorReference editorReference = ViewsUtil.getEditorReferenceForIFileIfOpened(file);
 				if (editorReference != null) {
 					StructuredTextEditor ste = (StructuredTextEditor)editorReference.getEditor(false);
 					setAnnotations(resultsStorage.getAnnotations(), ste);	
@@ -712,8 +715,6 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 
-	
-
 	private boolean checkFileIsSaved() {
 		IWorkbench workbench = PlatformUI.getWorkbench();
 		IWorkbenchWindow workbenchWindow = workbench.getActiveWorkbenchWindow();
@@ -782,24 +783,6 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 
-	private IEditorReference getEditorReferenceForIFileIfOpened(IFile file) {
-		IEditorReference[] editorReferences = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getEditorReferences();
-		for (IEditorReference editorReference : editorReferences) {
-			try {
-				IEditorInput editorInput = editorReference.getEditorInput();
-				if (editorInput instanceof IFileEditorInput) {
-					IFileEditorInput iFileEditorInput = (IFileEditorInput) editorInput;
-					if (iFileEditorInput.getFile().equals(file)) {
-						return editorReference;
-					}
-				}
-			} catch (PartInitException e) {
-				ViewsUtil.showDetailedError(e);
-			}
-		}
-		return null;
-	}	
-	
 	private boolean hasStyleSheetExtension(IFile file) {
 		String fileExtension = file.getFileExtension().toLowerCase();
 		return "css".equals(fileExtension) || "less".equals(fileExtension);
@@ -854,7 +837,7 @@ public class DuplicationRefactoringView extends ViewPart {
 	private void analyzeDOMs() {
 		if (analysisOptions.shouldAnalyzeDoms()) {
 			Crawler crawler = new Crawler(analysisOptions);
-			documents = new HashSet<>();
+			documents.clear();
 			Job job = Job.create(LocalizedStrings.get(Keys.CRAWLING_JOB), new ICoreRunnable() {
 				@Override
 				public void run(IProgressMonitor monitor) throws CoreException {
@@ -864,6 +847,10 @@ public class DuplicationRefactoringView extends ViewPart {
 						public void newDOMVisited(Document document) {
 							documents.add(document);
 							//newDOMFound();
+						}
+						@Override
+						public void finishedCrawling(CrawlSession session) {
+							DuplicationRefactoringView.this.session = session;
 						}
 					});
 					crawler.start();
@@ -894,7 +881,7 @@ public class DuplicationRefactoringView extends ViewPart {
 						if (selectedStyleSheet != null) {
 							SubMonitor gettingDependenciesMonior = subMonitor.split(10).setWorkRemaining(100);
 							gettingDependenciesMonior.setTaskName(LocalizedStrings.get(Keys.GETTING_DEPENDENCIES));
-							CSSValueOverridingDependencyList dependencies = getOverridingDependencies(selectedStyleSheet);
+							CSSValueOverridingDependencyList dependencies = getOverridingDependencies();
 							//gettingDependenciesMonior.worked(100);
 							SubMonitor gettingDependenciesVisualizationMonitor = subMonitor.split(80).setWorkRemaining(100);
 							gettingDependenciesVisualizationMonitor.setTaskName(LocalizedStrings.get(Keys.GENERATING_DEPENDENCY_VISUALIZATION));
@@ -914,13 +901,24 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 
-	private CSSValueOverridingDependencyList getOverridingDependencies(StyleSheet styleSheet) {
+	public CSSValueOverridingDependencyList getOverridingDependencies() {
 		CSSValueOverridingDependencyList dependencies = new CSSValueOverridingDependencyList();
-		for (Document document : documents) {
-			dependencies.addAll(styleSheet.getValueOverridingDependencies(document));
+		StyleSheet styleSheet = getSelectedStyleSheet();
+		if (styleSheet != null) {
+			for (Document document : documents) {
+				dependencies.addAll(styleSheet.getValueOverridingDependencies(document));
+			}
+			// Also add intra-selector dependencies
+			dependencies.addAll(styleSheet.getValueOverridingDependencies());
 		}
-		// Also add intra-selector dependencies
-		dependencies.addAll(styleSheet.getValueOverridingDependencies());
 		return dependencies;
+	}
+
+	public List<Document> getDocumens() {
+		return documents;
+	}
+	
+	public CrawlSession getCrawlSession() {
+		return session;
 	}
 }

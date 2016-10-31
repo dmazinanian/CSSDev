@@ -15,13 +15,17 @@ import org.openqa.selenium.phantomjs.PhantomJSDriverService;
 import org.w3c.dom.Document;
 
 import com.crawljax.browser.EmbeddedBrowser.BrowserType;
+import com.crawljax.core.CrawlSession;
 import com.crawljax.core.CrawlerContext;
 import com.crawljax.core.CrawljaxRunner;
+import com.crawljax.core.ExitNotifier.ExitStatus;
 import com.crawljax.core.configuration.BrowserConfiguration;
 import com.crawljax.core.configuration.CrawlRules.CrawlRulesBuilder;
 import com.crawljax.core.configuration.CrawljaxConfiguration;
 import com.crawljax.core.configuration.CrawljaxConfiguration.CrawljaxConfigurationBuilder;
 import com.crawljax.core.plugin.OnNewStatePlugin;
+import com.crawljax.core.plugin.PostCrawlingPlugin;
+import com.crawljax.core.state.Eventable;
 import com.crawljax.core.state.StateVertex;
 
 import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
@@ -100,12 +104,23 @@ public class Crawler {
 				}
 				Document document;
 				try {
+					for (Eventable eventable : arg0.getCrawlPath()) {
+						System.out.println("------------------------------------------------------");
+						System.out.println(eventable.getElement());
+						System.out.println("------------------------------------------------------");
+					}
 					document = arg1.getDocument();
 					documents.add(document);
-					notifyObservers(document);
+					notifyDomVisitedObservers(document);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+			}
+		});
+		builder.addPlugin(new PostCrawlingPlugin() {
+			@Override
+			public void postCrawling(CrawlSession session, ExitStatus exitStaus) {
+				notifyCrawlingFinishedObservers(session);
 			}
 		});
 		builder.setBrowserConfig(new BrowserConfiguration(BrowserType.PHANTOMJS, 1));
@@ -146,9 +161,15 @@ public class Crawler {
 		return builder.build();
 	}
 	
-	private void notifyObservers(Document document) {
+	private void notifyDomVisitedObservers(Document document) {
 		for (CrawlerObserver observer : observers) {
 			observer.newDOMVisited(document);
+		}
+	}
+	
+	private void notifyCrawlingFinishedObservers(CrawlSession session) {
+		for (CrawlerObserver observer : observers) {
+			observer.finishedCrawling(session);
 		}
 	}
 	

@@ -10,17 +10,24 @@
       </category>
       <view
             name="Duplicated Declarations"
-            icon="icons/16.png"
+            icon="icons/icon.png"
             category="css-analyser"
             class="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView"
             id="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
       </view>
       <view
             name="Overriding Dependencies"
-            icon="icons/16.png"
+            icon="icons/icon.png"
             category="css-analyser"
             class="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView"
             id="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView">
+      </view>
+      <view
+            name="Affected DOM nodes"
+            icon="icons/html_tag_obj.gif"
+            category="css-analyser"
+            class="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.AffectedDOMNodesView"
+            id="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.AffectedDOMNodesView">
       </view>
    </extension>
    <extension
@@ -87,6 +94,56 @@
             verticalRulerPreferenceKey="styleRule_verticalRuler"
             verticalRulerPreferenceValue="false">
       </specification>
+	  <specification
+            annotationType="ca.concordia.cssanalyser.plugin.annotations.Declaration"
+            colorPreferenceKey="declaration_color"
+            colorPreferenceValue="220,170,255"
+            contributesToHeader="true"
+            highlightPreferenceKey="declaration_highlight"
+            highlightPreferenceValue="true"
+            includeOnPreferencePage="true"
+            isGoToNextNavigationTarget="true"
+            isGoToNextNavigationTargetKey="declaration_nextNavigationTarget"
+            isGoToPreviousNavigationTarget="true"
+            isGoToPreviousNavigationTargetKey="declaration_previousNavigationTarget"
+            label="Declaration"
+            overviewRulerPreferenceKey="declaration_overviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="0"
+            showInNextPrevDropdownToolbarAction="true"
+            showInNextPrevDropdownToolbarActionKey="declaration_nextPrevDropdownToolbar"
+            textPreferenceKey="declaration_text"
+            textPreferenceValue="true"
+            textStylePreferenceKey="declaration_stylePreferences"
+            textStylePreferenceValue="BOX"
+            verticalRulerPreferenceKey="declaration_verticalRuler"
+            verticalRulerPreferenceValue="false">
+      </specification>
+ 	  <specification
+            annotationType="ca.concordia.cssanalyser.plugin.annotations.DomNode"
+            colorPreferenceKey="dom_node_color"
+            colorPreferenceValue="221,221,255"
+            contributesToHeader="true"
+            highlightPreferenceKey="dom_node_highlight"
+            highlightPreferenceValue="true"
+            includeOnPreferencePage="true"
+            isGoToNextNavigationTarget="true"
+            isGoToNextNavigationTargetKey="dom_node_nextNavigationTarget"
+            isGoToPreviousNavigationTarget="true"
+            isGoToPreviousNavigationTargetKey="dom_node_previousNavigationTarget"
+            label="HTML Node"
+            overviewRulerPreferenceKey="dom_node_overviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="0"
+            showInNextPrevDropdownToolbarAction="true"
+            showInNextPrevDropdownToolbarActionKey="dom_node_nextPrevDropdownToolbar"
+            textPreferenceKey="dom_node_text"
+            textPreferenceValue="true"
+            textStylePreferenceKey="dom_node_stylePreferences"
+            textStylePreferenceValue="BOX"
+            verticalRulerPreferenceKey="dom_node_verticalRuler"
+            verticalRulerPreferenceValue="false">
+      </specification>     
    </extension>
 	<extension point="org.eclipse.core.expressions.definitions">
       <definition id="org.eclipse.ui.example.styleSheetFile">

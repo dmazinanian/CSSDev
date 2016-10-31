@@ -1,6 +1,7 @@
 package ca.concordia.cssanalyser.plugin.views.dependenciesvisualization;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,7 +41,6 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 	private static final int SELECTORS_GAP_Y = 20;
 	private final Map<Selector, SelectorFigure> selectorFigures = new HashMap<>();
 	private final Map<Integer, List<SelectorFigure>> selectorFigureLevels = new HashMap<>();
-	private final DependenciesVisualizationView dependenciesView;
 	private final List<SelectorFigure> selectedSelectorFigures = new ArrayList<>();
 	private final DependenciesDisplaySettingChangeListener dependenciesDisplaySettingChangeListener = new DependenciesDisplaySettingChangeListener() {
 		@Override
@@ -64,9 +64,9 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 	private boolean showCascadingConnections = true,
 			showSpecificityConnections = true,
 			showImportanceConnections = true;
+	
 
-	public DependenciesFigurePane(DependenciesVisualizationView dependenciesView, CSSValueOverridingDependencyList dependencies, SubMonitor subMonitor) {
-		this.dependenciesView = dependenciesView;
+	public DependenciesFigurePane(CSSValueOverridingDependencyList dependencies, SubMonitor subMonitor) {
 		
 		setOpaque(true); // This is necessary for the mouse listener to work
 		DependenciesFigurePaneMouseListener dependenciesFigurePaneMouseListener = new DependenciesFigurePaneMouseListener(this);
@@ -497,28 +497,15 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 		return dependenciesDisplaySettingChangeListener;
 	}
 	
-
-	public void performSearch(String selectorNameToSearch, String mediaToSearch) {
-		unhiglightFigures();
-		boolean found = false;
-		for (SelectorFigure selectorFigure : selectorFigures.values()) {
-			Selector selector = selectorFigure.getSelector();
-			if (selector.toString().contains(selectorNameToSearch.trim()))  {
-				if (!"".equals(mediaToSearch.trim()) &&
-						!selector.getMediaQueryLists().toString().contains(mediaToSearch)) {
-					continue;
-				}
-				selectorFigure.highlight();
-				selectedSelectorFigures.add(selectorFigure);
-				found = true;
-			}
-		}
-		if (found) {
-			dependenciesView.setClearResultsEnabled();
+	public void highlightFigure(Selector selector) {
+		SelectorFigure selectorFigure = selectorFigures.get(selector);
+		if (selectorFigure != null) {
+			selectorFigure.highlight();
+			selectedSelectorFigures.add(selectorFigure);
 		}
 	}
 	
-	private void unhiglightFigures() {
+	public void unhiglightFigures() {
 		for (SelectorFigure selectorFigure : selectedSelectorFigures) {
 			selectorFigure.unhighlight();
 		}
@@ -527,5 +514,9 @@ public class DependenciesFigurePane extends ScalableFreeformLayeredPane {
 
 	public void clearSearchResults() {
 		unhiglightFigures();
+	}
+
+	public Collection<SelectorFigure> getSelecorFigures() {
+		return selectorFigures.values();
 	}
 }

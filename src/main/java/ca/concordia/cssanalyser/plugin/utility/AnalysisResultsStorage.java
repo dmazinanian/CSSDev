@@ -6,13 +6,13 @@ import org.eclipse.core.resources.IFile;
 
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 
-public class DuplicationResultsStorage {
+public class AnalysisResultsStorage {
 	
 	private final IFile correspondingFile;
 	private final List<DuplicationInfo> duplicationInfoList;
 	private final List<CSSAnnotation> annotations;
 	
-	public DuplicationResultsStorage(IFile correspondingFile, List<DuplicationInfo> duplicationInfoList, List<CSSAnnotation> annotations) {
+	public AnalysisResultsStorage(IFile correspondingFile, List<DuplicationInfo> duplicationInfoList, List<CSSAnnotation> annotations) {
 		this.correspondingFile = correspondingFile;
 		this.duplicationInfoList = duplicationInfoList;
 		this.annotations = annotations;

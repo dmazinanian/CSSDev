@@ -24,6 +24,7 @@ import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
+import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
@@ -44,6 +45,8 @@ public class DependenciesVisualizationView extends ViewPart {
 	private IAction resetZoomAction;
 	private IAction searchForSelectorAction;
 	private IAction clearResultsAction;
+
+	private CSSValueOverridingDependencyList dependencies;
 	
 	@Override
 	public void createPartControl(Composite parent) {
@@ -122,8 +125,9 @@ public class DependenciesVisualizationView extends ViewPart {
 	}
 
 	public void showDependenciesGraph(CSSValueOverridingDependencyList dependencies, SubMonitor progressMonitor) {
+		this.dependencies = dependencies;
 		figureCanvas.setViewport(new FreeformViewport());
-		DependenciesFigurePane dependenciesFigurePane = new DependenciesFigurePane(this, dependencies, progressMonitor);
+		DependenciesFigurePane dependenciesFigurePane = new DependenciesFigurePane(dependencies, progressMonitor);
 		figureCanvas.setContents(dependenciesFigurePane);
 		legendArea.setViewport(new FreeformViewport());
 		DependenciesLegendPane dependenciesLegendPane = new DependenciesLegendPane();
@@ -160,12 +164,34 @@ public class DependenciesVisualizationView extends ViewPart {
 	@Override
 	public void setFocus() {}
 
-	public void performSearch(String selectorNameToSearch, String mediaToSearch) {
-		((DependenciesFigurePane)figureCanvas.getContents()).performSearch(selectorNameToSearch, mediaToSearch);
-	}
-
-	public void setClearResultsEnabled() {
-		clearResultsAction.setEnabled(true);
+	public void performSelectorSearch(String selectorNameToSearch, String mediaToSearch) {
+		DependenciesFigurePane dependenciesFigurePane = (DependenciesFigurePane)figureCanvas.getContents();
+		dependenciesFigurePane.unhiglightFigures();
+		boolean found = false;
+		for (SelectorFigure selectorFigure : dependenciesFigurePane.getSelecorFigures()) {
+			Selector selector = selectorFigure.getSelector();
+			if (selector.toString().contains(selectorNameToSearch.trim()))  {
+				if (!"".equals(mediaToSearch.trim()) &&
+						!selector.getMediaQueryLists().toString().contains(mediaToSearch)) {
+					continue;
+				}
+				selectorFigure.highlight();
+				found = true;
+			}
+		}
+		clearResultsAction.setEnabled(found);
 	}
 	
+	public void highlightSelectors(Iterable<Selector> selectors) {
+		DependenciesFigurePane dependenciesFigurePane = (DependenciesFigurePane)figureCanvas.getContents();
+		dependenciesFigurePane.unhiglightFigures();
+		for (Selector selector : selectors) {
+			dependenciesFigurePane.highlightFigure(selector);
+		}
+	}
+	
+	public CSSValueOverridingDependencyList getOverridingDependencies() {
+		return dependencies;
+	}
+
 }

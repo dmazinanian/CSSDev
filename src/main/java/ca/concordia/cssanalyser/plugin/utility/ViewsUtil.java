@@ -1,8 +1,12 @@
 package ca.concordia.cssanalyser.plugin.utility;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileStore;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
@@ -10,8 +14,12 @@ import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IViewReference;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
@@ -33,6 +41,17 @@ public class ViewsUtil {
 		return null;
 	}
 	
+	public static IViewPart getView(String viewID) {
+		IViewReference viewReferences[] = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
+				.getActivePage().getViewReferences();
+		for (int i = 0; i < viewReferences.length; i++) {
+			if (viewID.equals(viewReferences[i].getId())) {
+				return viewReferences[i].getView(false);
+			}
+		}
+		return null;
+	}
+	
 	public static IEditorPart openEditor(String filePath) {
 		IWorkbench workbench = PlatformUI.getWorkbench();
 		IWorkbenchWindow workbenchWindow = workbench.getActiveWorkbenchWindow();
@@ -43,6 +62,21 @@ public class ViewsUtil {
 		} catch (PartInitException e) {
 			e.printStackTrace();
 		}	
+		return null;
+	}
+	
+	public static IEditorPart openExternalFile(String filePath) {
+		File fileToOpen;
+		fileToOpen = new File(filePath);
+		if (fileToOpen.exists() && fileToOpen.isFile()) {
+			IFileStore fileStore = EFS.getLocalFileSystem().getStore(fileToOpen.toURI());
+			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+			try {
+				return IDE.openEditorOnFileStore(page, fileStore );
+			} catch (PartInitException e) {
+				e.printStackTrace();
+			}
+		}
 		return null;
 	}
 	
@@ -67,5 +101,23 @@ public class ViewsUtil {
 			info.add(new Status(IStatus.ERROR, pluginId, 1, s.replace("\t", "    "), throwable));	
 		}
 		return info;
+	}
+
+	public static IEditorReference getEditorReferenceForIFileIfOpened(IFile file) {
+		IEditorReference[] editorReferences = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getEditorReferences();
+		for (IEditorReference editorReference : editorReferences) {
+			try {
+				IEditorInput editorInput = editorReference.getEditorInput();
+				if (editorInput instanceof IFileEditorInput) {
+					IFileEditorInput iFileEditorInput = (IFileEditorInput) editorInput;
+					if (iFileEditorInput.getFile().equals(file)) {
+						return editorReference;
+					}
+				}
+			} catch (PartInitException e) {
+				showDetailedError(e);
+			}
+		}
+		return null;
 	}
 }

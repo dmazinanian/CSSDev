@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.draw2d.Figure;
+import org.eclipse.draw2d.GridLayout;
 import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.PositionConstants;
@@ -28,7 +30,7 @@ public class SelectorFigure extends RoundedRectangle {
 	private final Set<CSSValueOverridingDependency> markedDependencies = new HashSet<>();
 	private final List<SelectorFigureConnection> outgoingConnections = new ArrayList<>();
 	private final List<SelectorFigureConnection> incomingConnections = new ArrayList<>();
-	private Selector selector;
+	private final Selector selector;
 	
 	public SelectorFigure() {
 		this(null);
@@ -43,14 +45,22 @@ public class SelectorFigure extends RoundedRectangle {
 		setBorder(new MarginBorder(5, 10, 5, 10));
 		setForegroundColor(VisualizationConstants.SELECTOR_BORDER_COLOR);
 		setOpaque(true);
+		setAntialias(SWT.ON);
 		setFont(PreferencesUtil.getTextEditorFont());
 		
 		if (selector != null) {
+			Figure selectorNameFigure = new Figure();
+			selectorNameFigure.setLayoutManager(new GridLayout(2, false));
+			
 			Label selectorName = new Label(getLabelString(selector.toString(), 15));
 			selectorName.setLabelAlignment(PositionConstants.LEFT);
 			selectorName.setToolTip(new SelectorTooltip(selector));
 			selectorName.setForegroundColor(VisualizationConstants.SELECTOR_COLOR);
-			add(selectorName);
+			selectorNameFigure.add(selectorName);
+			
+			selectorNameFigure.add(new SelectorToolsFigure(selector));
+			
+			add(selectorNameFigure);
 			
 			if (selector.getMediaQueryLists().size() > 0) {
 				Label mediaQuery = new Label(getLabelString(selector.getMediaQueryLists().toString(), 15));
@@ -60,7 +70,6 @@ public class SelectorFigure extends RoundedRectangle {
 			add(new Label(""));
 		}
 		
-		setAntialias(SWT.ON);
 	}
 	
 	private String getLabelString(String string, int maxLength) {
