@@ -130,6 +130,22 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			// 3- Add the new Mixin 
 			progressMonitor.subTask(LocalizedStrings.get(Keys.CREATING_ADD_MIXIN_CHANGE));
 			progressMonitor.worked(25);
+			// Add a comment showing that the mixin was extracted from what selectors
+			StringBuilder commentStringBuilder = new StringBuilder();
+			commentStringBuilder.append("/*").append(System.lineSeparator());
+			commentStringBuilder.append(" * ").append(LocalizedStrings.get(Keys.NEW_MIXIN_EXTRACTED_FROM)).append(System.lineSeparator());
+			for (Selector involvedSelector : mixinMigrationOpportunity.getInvolvedSelectors()) {
+				commentStringBuilder.append(" * ")
+					.append(involvedSelector)
+					.append(" <")
+					.append(involvedSelector.getLocationInfo().getLineNumber())
+					.append(", ")
+					.append(involvedSelector.getLocationInfo().getColumnNumber())
+					.append(">")
+					.append(System.lineSeparator());
+			}
+			commentStringBuilder.append("*/").append(System.lineSeparator());
+			newMixinString = commentStringBuilder.toString() + newMixinString;
 			InsertEdit newMixinInsertEdit = new InsertEdit(fileContents.length(), newMixinString);	 
 			fileChangeRootEdit.addChild(newMixinInsertEdit);
 			resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_DECLARATION), mixinMigrationOpportunity.getMixinName()),
@@ -140,13 +156,17 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 			progressMonitor.worked(25);
 			for (Selector involvedSelector : mixinMigrationOpportunity.getInvolvedSelectors()) {
 				String mixinCallString = mixinMigrationOpportunity.getMixinReferenceString(involvedSelector);
-				mixinCallString = PreferencesUtil.getTabString() + mixinCallString + System.lineSeparator();
+				mixinCallString = System.lineSeparator() + PreferencesUtil.getTabString() + mixinCallString + System.lineSeparator();
 				try {
 					Declaration[] positionsMap = mixinMigrationOpportunity.getMixinCallPosition(involvedSelector);
 
 					if (positionsMap == null) { // don't touch anything, just add the call to the end
 						int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(involvedSelector);
-						InsertEdit insertNewMixinCall = new InsertEdit(lastCharOfSelectorOffset, mixinCallString);
+						int previousRealCharIndex = getPreviousRealCharIndex(fileContents, lastCharOfSelectorOffset);
+						if (fileContents.charAt(previousRealCharIndex) != ';') {
+							mixinCallString = ";" + mixinCallString;
+						}
+						InsertEdit insertNewMixinCall = new InsertEdit(previousRealCharIndex + 1, mixinCallString);
 						fileChangeRootEdit.addChild(insertNewMixinCall);
 						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), mixinMigrationOpportunity.getMixinName()),
 								insertNewMixinCall));
@@ -204,6 +224,17 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	    };
 	    progressMonitor.done();
 	    return change;
+	}
+
+	private int getPreviousRealCharIndex(String fileContents, int lastCharOfSelectorOffset) {
+		int previousCharPos = lastCharOfSelectorOffset - 1;
+		while (previousCharPos >= 0 && (fileContents.charAt(previousCharPos) == '\t' || 
+				fileContents.charAt(previousCharPos) == '\r' ||
+				fileContents.charAt(previousCharPos) == '\n') ||
+				fileContents.charAt(previousCharPos) == ' ') {
+			previousCharPos--;
+		}
+		return previousCharPos;
 	}
 
 	private int getLastCharOfSelectorOffset(Selector selector) {
