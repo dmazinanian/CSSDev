@@ -31,7 +31,7 @@ public class ColumnSortListener implements Listener {
 		}
 		
 		table.setSortDirection(dir);
-		tableViewer.setComparator(new DuplicationViewViewerComparator(columnIndex));
+		tableViewer.setComparator(new DuplicationViewViewerComparator(columnIndex, dir == SWT.DOWN));
 	}
 
 }

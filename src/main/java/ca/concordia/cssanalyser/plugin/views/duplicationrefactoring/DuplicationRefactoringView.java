@@ -1,6 +1,5 @@
 package ca.concordia.cssanalyser.plugin.views.duplicationrefactoring;
 
-
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +24,7 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.text.Position;
+import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -32,19 +32,18 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.ITableLabelProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.window.ToolTip;
 import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizardOpenOperation;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -100,9 +99,9 @@ import ca.concordia.cssanalyser.plugin.refactoring.grouping.GroupingRefactoring;
 import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinDuplicationInfo;
 import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinMigrationRefactoring;
 import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
+import ca.concordia.cssanalyser.plugin.utility.AnalysisResultsStorage;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
-import ca.concordia.cssanalyser.plugin.utility.AnalysisResultsStorage;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
@@ -238,26 +237,6 @@ public class DuplicationRefactoringView extends ViewPart {
 			return duplicationInfoList.toArray();
 		}
 	}
-	
-	private class DuplicationViewLabelProvider extends LabelProvider implements ITableLabelProvider {
-		public String getColumnText(Object obj, int index) {
-			DuplicationInfo selectedDuplicationInfoObject = (DuplicationInfo) obj;
-			switch(index){
-			case 0:
-				return selectedDuplicationInfoObject.getDeclarationNames();
-			case 1:
-				return selectedDuplicationInfoObject.getSelectorNames();
-			case 2:
-				return String.valueOf(selectedDuplicationInfoObject.getRank()); 
-			default:
-				return "";
-			}
-		}
-
-		public Image getColumnImage(Object obj, int index) {
-			return getImage(obj);
-		}
-	}
 
 	@Override
 	public void createPartControl(Composite parent) {
@@ -294,30 +273,65 @@ public class DuplicationRefactoringView extends ViewPart {
 	}
 
 	private void createTableViewer(Composite parent) {
+		
 		viewer = new TableViewer(parent, SWT.SINGLE | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
 		viewer.setContentProvider(new DuplicationViewContentProvider(null));
-		viewer.setLabelProvider(new DuplicationViewLabelProvider());
 		viewer.setInput(getViewSite());
 		TableLayout layout = new TableLayout();
-		layout.addColumnData(new ColumnWeightData(40, true));
-		layout.addColumnData(new ColumnWeightData(60, true));
+		layout.addColumnData(new ColumnWeightData(8, true));
+		layout.addColumnData(new ColumnWeightData(25, true));
+		layout.addColumnData(new ColumnWeightData(6, true));
+		layout.addColumnData(new ColumnWeightData(30, true));
+		layout.addColumnData(new ColumnWeightData(5, true));
+		layout.addColumnData(new ColumnWeightData(20, true));
 		viewer.getTable().setLayout(layout);
 		viewer.getTable().setLinesVisible(true);
-		viewer.getTable().setHeaderVisible(true);
+		viewer.getTable().setHeaderVisible(true); 
+		ColumnViewerToolTipSupport.enableFor(viewer, ToolTip.RECREATE);
+
+		TableViewerColumn declarationCountViewerColumn = new TableViewerColumn(viewer, SWT.CENTER);
+		TableColumn declarationCountColumn = declarationCountViewerColumn.getColumn();
+		declarationCountColumn.setText(LocalizedStrings.get(Keys.NUMBER_OF_DECLARATIONS));
+		declarationCountColumn.setResizable(true);
+		declarationCountColumn.addListener(SWT.Selection, new ColumnSortListener(viewer, 0));
+		declarationCountViewerColumn.setLabelProvider(new DuplicationTableViewerLabelProvider(0));
 		
-		TableColumn column0 = new TableColumn(viewer.getTable(), SWT.LEFT);
-		column0.setText(LocalizedStrings.get(Keys.DECLARATIONS));
-		column0.setResizable(true);
-		column0.pack();
-		column0.addListener(SWT.Selection,new ColumnSortListener(viewer, 0));
+		TableViewerColumn declarationsViewerColumn = new TableViewerColumn(viewer, SWT.LEFT);
+		TableColumn declarationColumn = declarationsViewerColumn.getColumn();
+		declarationColumn.setText(LocalizedStrings.get(Keys.DECLARATIONS));
+		declarationColumn.setResizable(true);
+		declarationColumn.addListener(SWT.Selection, new ColumnSortListener(viewer, 1));
+		declarationsViewerColumn.setLabelProvider(new DuplicationTableViewerLabelProvider(1));
 		
-		TableColumn column1 = new TableColumn(viewer.getTable(), SWT.LEFT);
+		TableViewerColumn selectorCountViewerColumn = new TableViewerColumn(viewer, SWT.CENTER);
+		TableColumn selectorCountColumn = selectorCountViewerColumn.getColumn();
+		selectorCountColumn.setText(LocalizedStrings.get(Keys.NUMBER_OF_SELECTORS));
+		selectorCountColumn.setResizable(true);
+		selectorCountColumn.addListener(SWT.Selection, new ColumnSortListener(viewer, 2));
+		selectorCountViewerColumn.setLabelProvider(new DuplicationTableViewerLabelProvider(2));
+		
+		TableViewerColumn selectorsViewerColmumn = new TableViewerColumn(viewer, SWT.LEFT);
+		TableColumn column1 = selectorsViewerColmumn.getColumn();
 		column1.setText(LocalizedStrings.get(Keys.SELECTORS));
 		column1.setResizable(true);
-		column1.pack();
-		column1.addListener(SWT.Selection,new ColumnSortListener(viewer, 1));
+		column1.addListener(SWT.Selection, new ColumnSortListener(viewer, 3));
+		selectorsViewerColmumn.setLabelProvider(new DuplicationTableViewerLabelProvider(3));
 		
-		viewer.setColumnProperties(new String[] {"declarations", "selectors"});
+		TableViewerColumn duplicationTypesViewerColumn = new TableViewerColumn(viewer, SWT.CENTER);
+		TableColumn duplicationTypesColumn = duplicationTypesViewerColumn.getColumn();
+		duplicationTypesColumn.setText(LocalizedStrings.get(Keys.DUPLICATION_TYPES));
+		duplicationTypesColumn.setResizable(true);
+		duplicationTypesColumn.addListener(SWT.Selection, new ColumnSortListener(viewer, 4));
+		duplicationTypesViewerColumn.setLabelProvider(new DuplicationTableViewerLabelProvider(4));
+		
+		TableViewerColumn declarationCategoriesViewerColumn = new TableViewerColumn(viewer, SWT.LEFT);
+		TableColumn declarationCategoriesColumn = declarationCategoriesViewerColumn.getColumn();
+		declarationCategoriesColumn.setText(LocalizedStrings.get(Keys.PROPERTY_CATEGORIES));
+		declarationCategoriesColumn.setResizable(true);
+		declarationCategoriesColumn.addListener(SWT.Selection, new ColumnSortListener(viewer, 5));
+		declarationCategoriesViewerColumn.setLabelProvider(new DuplicationTableViewerLabelProvider(5));
+		
+		viewer.setColumnProperties(new String[] {"declarations", "selectors", "duplicationTypes", "declarationCategories"});
 		viewer.getTable().setLayoutData(new GridData(GridData.FILL_BOTH));
 		
 		viewer.addSelectionChangedListener(new ISelectionChangedListener() {

@@ -15,6 +15,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
+import ca.concordia.cssanalyser.csshelper.CSSPropertyCategoryHelper;
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.PropertyAndLayer;
 import ca.concordia.cssanalyser.cssmodel.declaration.value.DeclarationValue;
@@ -59,13 +60,21 @@ public class MixinDeclarationDiffView extends Composite {
 
 	private void layoutComposite() {
 		this.setBackground(BACKGROUND_COLOR);
-		GridLayout layout = new GridLayout(mixinDeclaration.getAllSetPropertyAndLayers().size() + 1, false);
-		layout.horizontalSpacing = 10;
+		GridLayout layout = new GridLayout(mixinDeclaration.getAllSetPropertyAndLayers().size() + 2, false);
+		layout.horizontalSpacing = 8;
 		layout.verticalSpacing = 0;
 		this.setLayout(layout);
 	}
 	
 	private void createMixinDeclarationArea() {
+		String nonVendorNonHackedProperty = Declaration.getNonVendorProperty(Declaration.getNonHackedProperty(mixinDeclaration.getPropertyName()));
+		Composite categoryComposite = new PropertyCategoryMarker(this, CSSPropertyCategoryHelper.getCSSCategoryOfProperty(nonVendorNonHackedProperty));
+		GridData categoryGridData = new GridData();
+		categoryGridData.widthHint = 19;
+		categoryGridData.heightHint = 19;
+		categoryComposite.setLayoutData(categoryGridData);
+		categoryComposite.setBackground(BACKGROUND_COLOR);
+		
 		mixinPropertyCheckBox = new PropertyCheckBox(this, mixinDeclaration.getPropertyName(), true);
 		new ExtractMixinMixinPropertyToolTip(mixinPropertyCheckBox.getPropertyLabel().getPropertyLabel().getUnderlayingLabel(), mixinDeclaration);
 		mixinPropertyCheckBox.setBackground(BACKGROUND_COLOR);
@@ -101,7 +110,8 @@ public class MixinDeclarationDiffView extends Composite {
 			new ExtractMixinDeclarationPropertyTooltip(declarationPropertyLabel.getObjectForTooltip(), declaration);
 			selectorToPropertyLabelsMap.put(declaration.getSelector(), declarationPropertyLabel);
 			GridData layoutData = new GridData();
-			layoutData.horizontalIndent = 20;
+			layoutData.horizontalIndent = 45;
+			layoutData.horizontalSpan = 2;
 			declarationPropertyLabel.setLayoutData(layoutData);
 			Set<PropertyAndLayer> checkedPropertiesAndLayers = new HashSet<>();
 			for (DeclarationValue declarationValue : mixinDeclaration.getReferenceDeclaration().getDeclarationValues()) {

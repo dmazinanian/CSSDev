@@ -186,7 +186,7 @@ public class AnalysisOptionsWizardPage extends WizardPage {
 		clickOnceButton.setSelection(analysisOptions.shouldClickOnce());
 		
 		crawlHiddenAnchorsButton = new Button(analysisOptionsGroup, SWT.CHECK);
-		crawlHiddenAnchorsButton.setText(LocalizedStrings.get(Keys.CRAW_HIDDEN_ANCHORS));
+		crawlHiddenAnchorsButton.setText(LocalizedStrings.get(Keys.CRAWL_HIDDEN_ANCHORS));
 		crawlHiddenAnchorsButton.setLayoutData(spannerGridData);
 		crawlHiddenAnchorsButton.setSelection(analysisOptions.shouldCrawlHiddenAnchorsButton());
 		
