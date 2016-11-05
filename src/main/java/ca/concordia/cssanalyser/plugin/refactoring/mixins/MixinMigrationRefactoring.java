@@ -37,8 +37,8 @@ import ca.concordia.cssanalyser.plugin.refactoring.OffsetLengthList;
 import ca.concordia.cssanalyser.plugin.refactoring.RefactoringUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
-import ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview.MixinDiffWizardPage;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
+import ca.concordia.cssanalyser.plugin.wizards.duplication.declarationsdiffview.MixinDiffWizardPage;
 
 public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	
@@ -161,14 +161,31 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 					Declaration[] positionsMap = mixinMigrationOpportunity.getMixinCallPosition(involvedSelector);
 
 					if (positionsMap == null) { // don't touch anything, just add the call to the end
+						
 						int lastCharOfSelectorOffset = getLastCharOfSelectorOffset(involvedSelector);
-						int previousRealCharIndex = getPreviousRealCharIndex(fileContents, lastCharOfSelectorOffset);
-						if (fileContents.charAt(previousRealCharIndex) != ';') {
-							mixinCallString = ";" + mixinCallString;
+						int previousRealCharIndex = lastCharOfSelectorOffset;
+						/*
+						 * If the last declaration of the selector is not being deleted,
+						 * we should check for the character after that to see
+						 * if it's a comma. If not, we should add a comma before adding the mixin call. 
+						 */
+						Declaration lastDeclaration = null;
+						for (Declaration declaration : involvedSelector.getDeclarations()) {
+							if (lastDeclaration == null || declaration.getDeclarationNumber() > lastDeclaration.getDeclarationNumber()) {
+								lastDeclaration = declaration;
+							}
 						}
-						InsertEdit insertNewMixinCall = new InsertEdit(previousRealCharIndex + 1, mixinCallString);
+						
+						if (!((Set<Declaration>)realDeclarationsToRemove).contains(lastDeclaration)) {
+							previousRealCharIndex = lastDeclaration.getLocationInfo().getOffset() + lastDeclaration.getLocationInfo().getLength();
+							if (fileContents.charAt(previousRealCharIndex) != ';') {
+								mixinCallString = ";" + mixinCallString;
+							}
+						}
+						
+						InsertEdit insertNewMixinCall = new InsertEdit(previousRealCharIndex, mixinCallString);
 						fileChangeRootEdit.addChild(insertNewMixinCall);
-						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), mixinMigrationOpportunity.getMixinName()),
+						resultingChange.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_MIXIN_CALL), involvedSelector),
 								insertNewMixinCall));
 					} else {
 						TextEditGroup addAndReOrderEditGroup = new TextEditGroup(
@@ -224,17 +241,6 @@ public class MixinMigrationRefactoring extends DuplicationRefactoring {
 	    };
 	    progressMonitor.done();
 	    return change;
-	}
-
-	private int getPreviousRealCharIndex(String fileContents, int lastCharOfSelectorOffset) {
-		int previousCharPos = lastCharOfSelectorOffset - 1;
-		while (previousCharPos >= 0 && (fileContents.charAt(previousCharPos) == '\t' || 
-				fileContents.charAt(previousCharPos) == '\r' ||
-				fileContents.charAt(previousCharPos) == '\n') ||
-				fileContents.charAt(previousCharPos) == ' ') {
-			previousCharPos--;
-		}
-		return previousCharPos;
 	}
 
 	private int getLastCharOfSelectorOffset(Selector selector) {
