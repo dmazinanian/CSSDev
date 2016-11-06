@@ -37,6 +37,7 @@ import org.eclipse.jface.viewers.TableLayout;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.window.ToolTip;
 import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
@@ -85,11 +86,14 @@ import ca.concordia.cssanalyser.analyser.progressmonitor.ProgressMonitor;
 import ca.concordia.cssanalyser.cssmodel.StyleSheet;
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.declaration.ShorthandDeclaration;
+import ca.concordia.cssanalyser.cssmodel.media.MediaQueryList;
+import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.migration.topreprocessors.PreprocessorType;
 import ca.concordia.cssanalyser.parser.CSSParser;
 import ca.concordia.cssanalyser.parser.CSSParserFactory;
 import ca.concordia.cssanalyser.parser.CSSParserFactory.CSSParserType;
 import ca.concordia.cssanalyser.parser.ParseException;
+import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
@@ -101,6 +105,7 @@ import ca.concordia.cssanalyser.plugin.refactoring.mixins.MixinMigrationRefactor
 import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
 import ca.concordia.cssanalyser.plugin.utility.AnalysisResultsStorage;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
@@ -108,6 +113,9 @@ import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
 import ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView;
 import ca.concordia.cssanalyser.plugin.wizards.analysisoptions.AnalysisOptionsWizard;
 import ca.concordia.cssanalyser.plugin.wizards.duplication.DuplicationRefactoringWizard;
+import ca.concordia.cssanalyser.plugin.wizards.filteroptions.FilterOptions;
+import ca.concordia.cssanalyser.plugin.wizards.filteroptions.FilterUtil;
+import ca.concordia.cssanalyser.plugin.wizards.filteroptions.FilterWizard;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependencyList;
 
 public class DuplicationRefactoringView extends ViewPart {
@@ -126,6 +134,8 @@ public class DuplicationRefactoringView extends ViewPart {
 	private IAction showSettingsAction;
 	private IAction refreshDependenciesAction;
 	private IAction showDependenciesAction;
+	private IAction filterOpportunitiesAction;
+	private IAction clearFiltersAction;
 	
 	private IFile selectedFile;
 	private boolean allowDifferencesInValues;
@@ -134,6 +144,7 @@ public class DuplicationRefactoringView extends ViewPart {
 	private Map<IFile, AnalysisResultsStorage> fileToResultsMap = new HashMap<>();
 	private Label numberOfOpportunitiesLabel;
 	private AnalysisOptions analysisOptions = new AnalysisOptions();
+	private FilterOptions filterOptions = new FilterOptions();
 	private List<Document> documents = new ArrayList<>();
 	private CrawlSession session;
 	
@@ -408,6 +419,9 @@ public class DuplicationRefactoringView extends ViewPart {
 		manager.add(clearResultsAction);
 		manager.add(clearAnnotationsAction);
 		manager.add(new Separator());
+		manager.add(filterOpportunitiesAction);
+		manager.add(clearFiltersAction);
+		manager.add(new Separator());
 		manager.add(refreshDependenciesAction);
 		manager.add(showDependenciesAction);
 	}
@@ -415,6 +429,9 @@ public class DuplicationRefactoringView extends ViewPart {
 	private void fillLocalToolBar(IToolBarManager manager) {
 		manager.add(showDependenciesAction);
 		manager.add(refreshDependenciesAction);
+		manager.add(new Separator());
+		manager.add(clearFiltersAction);
+		manager.add(filterOpportunitiesAction);
 		manager.add(new Separator());
 		manager.add(clearAnnotationsAction);
 		manager.add(clearResultsAction);
@@ -463,6 +480,28 @@ public class DuplicationRefactoringView extends ViewPart {
 		clearResultsAction.setToolTipText(LocalizedStrings.get(Keys.CLEAR_RESULTS));
 		clearResultsAction.setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().getImageDescriptor(ISharedImages.IMG_TOOL_DELETE));
 		clearResultsAction.setEnabled(false);
+		
+		filterOpportunitiesAction = new Action() {
+			@Override
+			public void run() {
+				showFiltersWizard();
+			}
+		};
+		filterOpportunitiesAction.setText(LocalizedStrings.get(Keys.FILTER_RESULTS));
+		filterOpportunitiesAction.setToolTipText(LocalizedStrings.get(Keys.FILTER_RESULTS));
+		filterOpportunitiesAction.setImageDescriptor(Activator.getImageDescriptor(Constants.FILTER_ICON));
+		filterOpportunitiesAction.setEnabled(false);
+		
+		clearFiltersAction = new Action() {
+			@Override
+			public void run() {
+				clearFilters();
+			}
+		};
+		clearFiltersAction.setText(LocalizedStrings.get(Keys.CLEAR_FILTERS));
+		clearFiltersAction.setToolTipText(LocalizedStrings.get(Keys.CLEAR_FILTERS));
+		clearFiltersAction.setImageDescriptor(Activator.getImageDescriptor(Constants.CLEAR_FILTERS_ICON));
+		clearFiltersAction.setEnabled(false);
 		
 		showSettingsAction = new Action() {
 			@Override
@@ -561,6 +600,65 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 	
+	protected void showFiltersWizard() {
+		List<DuplicationInfo> duplicationInfoList = ((DuplicationViewContentProvider)viewer.getContentProvider()).duplicationInfoList;
+		if (duplicationInfoList != null) {
+			FilterWizard filterWizard = new FilterWizard(filterOptions, duplicationInfoList);
+			WizardDialog wizardDialog = new WizardDialog(getViewSite().getShell(), filterWizard);
+			if (wizardDialog.open() == Window.OK) {
+				filterOptions = filterWizard.getFilterOptions();
+				applyFiltering();
+			}
+		}
+	}
+
+	private void applyFiltering() {
+		clearFiltersAction.setEnabled(true);
+		viewer.addFilter(new ViewerFilter() {
+			@Override
+			public boolean select(Viewer viewer, Object parent, Object element) {
+				DuplicationInfo duplicationInfo = (DuplicationInfo) element;
+				if (((Set<MediaQueryList>)duplicationInfo.getItemSet().getMediaQueryLists()).size() == 0) {
+					if (!filterOptions.includes(FilterUtil.getAllMediaQuery())) {
+						return false;
+					}
+				} else {
+					for (MediaQueryList mediaQueryList : duplicationInfo.getItemSet().getMediaQueryLists()) {
+						if (!filterOptions.includes(mediaQueryList)) {
+							return false;
+						}
+					}
+				}
+				for (Selector selector : duplicationInfo.getItemSet().getSupport()) {
+					if (!filterOptions.includes(selector)) {
+						return false;
+					}
+				}
+				for (Declaration declaration : duplicationInfo.getItemSet().getRepresentativeDeclarations()) {
+					String property = Declaration.getNonVendorProperty(Declaration.getNonHackedProperty(declaration.getProperty()));
+					if (!filterOptions.includes(property)) {
+						return false;
+					}
+				}
+				return true;
+			}
+		});
+		viewer.refresh();
+	}
+	
+	private void clearFilters() {
+		clearFiltersAction.setEnabled(false);
+		List<DuplicationInfo> duplicationInfoList = ((DuplicationViewContentProvider)viewer.getContentProvider()).duplicationInfoList;
+		if (duplicationInfoList != null) {
+			initializeFilterOptions(duplicationInfoList);
+		} else {
+			initializeFilterOptions(new ArrayList<>());
+		}
+		if (viewer.getFilters().length == 1) {
+			viewer.removeFilter(viewer.getFilters()[0]);
+		}
+	}
+
 	private void hookDoubleClickAction() {
 		viewer.addDoubleClickListener(new IDoubleClickListener() {
 			public void doubleClick(DoubleClickEvent event) {
@@ -575,20 +673,39 @@ public class DuplicationRefactoringView extends ViewPart {
 			clearAnnotations(forTextEditor);
 		clearResultsAction.setEnabled(false);
 		numberOfOpportunitiesLabel.setText("");
+		filterOpportunitiesAction.setEnabled(false);
+		clearFilters();
 	}
-	
+
 	private void fillTableViewer(List<DuplicationInfo> duplicationInfo) {
 		viewer.setContentProvider(new DuplicationViewContentProvider(duplicationInfo));
 		if (duplicationInfo != null && !duplicationInfo.isEmpty()) {
 			clearResultsAction.setEnabled(true);
+			filterOpportunitiesAction.setEnabled(true);
 			numberOfOpportunitiesLabel.setText(String.format(LocalizedStrings.get(Keys.NUMBER_OF_OPPORTUNITIES), String.valueOf(duplicationInfo.size())));
+			initializeFilterOptions(duplicationInfo);
 		} else {
 			clearResultsAction.setEnabled(false);
+			filterOpportunitiesAction.setEnabled(false);
 			numberOfOpportunitiesLabel.setText("");
+			initializeFilterOptions(new ArrayList<>());
 		}
 		numberOfOpportunitiesLabel.getParent().layout(true, true);
 	}
 	
+	private void initializeFilterOptions(List<DuplicationInfo> duplicationInfoList) {
+		filterOptions = new FilterOptions();
+		for (MediaQueryList mediaQueryList : FilterUtil.getUniqueMediaQueryLists(duplicationInfoList)) {
+			filterOptions.includeMediaQuery(mediaQueryList);
+		}
+		for (Selector selector : FilterUtil.getUniqueSelectors(duplicationInfoList)) {
+			filterOptions.includeSelector(selector);
+		}
+		for (String property : FilterUtil.getUniqueProperties(duplicationInfoList)) {
+			filterOptions.includeProperty(property);
+		}
+	}
+
 	private void clearAnnotations(StructuredTextEditor ste) {
 		AnnotationsUtil.clearAnnotations(ste);
 		currentAnnotations = new ArrayList<>();

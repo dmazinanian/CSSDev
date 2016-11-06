@@ -18,6 +18,7 @@ import org.eclipse.swt.SWT;
 
 import ca.concordia.cssanalyser.cssmodel.declaration.Declaration;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSIntraSelectorValueOverridingDependency;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependency;
@@ -41,9 +42,9 @@ public class SelectorFigure extends RoundedRectangle {
 		ToolbarLayout toolbarLayout = new ToolbarLayout();
 		toolbarLayout.setSpacing(2);
 		setLayoutManager(toolbarLayout);
-		setBackgroundColor(VisualizationConstants.SELECTOR_BG_COLOR);
+		setBackgroundColor(Constants.SELECTOR_BG_COLOR);
 		setBorder(new MarginBorder(5, 10, 5, 10));
-		setForegroundColor(VisualizationConstants.SELECTOR_BORDER_COLOR);
+		setForegroundColor(Constants.SELECTOR_BORDER_COLOR);
 		setOpaque(true);
 		setAntialias(SWT.ON);
 		setFont(PreferencesUtil.getTextEditorFont());
@@ -55,7 +56,7 @@ public class SelectorFigure extends RoundedRectangle {
 			Label selectorName = new Label(getLabelString(selector.toString(), 15));
 			selectorName.setLabelAlignment(PositionConstants.LEFT);
 			selectorName.setToolTip(new SelectorTooltip(selector));
-			selectorName.setForegroundColor(VisualizationConstants.SELECTOR_COLOR);
+			selectorName.setForegroundColor(Constants.SELECTOR_COLOR);
 			selectorNameFigure.add(selectorName);
 			
 			selectorNameFigure.add(new SelectorToolsFigure(selector));
@@ -166,11 +167,11 @@ public class SelectorFigure extends RoundedRectangle {
 	}
 
 	public void highlight() {
-		setForegroundColor(VisualizationConstants.SELECTED_SELECTOR_COLOR);
+		setForegroundColor(Constants.SELECTED_SELECTOR_COLOR);
 	}
 
 	public void unhighlight() {
-		setForegroundColor(VisualizationConstants.SELECTOR_BORDER_COLOR);
+		setForegroundColor(Constants.SELECTOR_BORDER_COLOR);
 	}
 
 }

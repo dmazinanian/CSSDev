@@ -18,6 +18,7 @@ import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.swt.SWT;
 
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 
@@ -77,8 +78,8 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		RoundedRectangle roundedRectangle = new RoundedRectangle();
 		roundedRectangle.setAntialias(SWT.ON);
 		roundedRectangle.setCornerDimensions(new Dimension(10, 10));
-		roundedRectangle.setForegroundColor(VisualizationConstants.DEPENDENCY_VISUALIZATION_LEGEND_BORDER_COLOR);
-		roundedRectangle.setBackgroundColor(VisualizationConstants.DEPENDENCY_VISUALIZATION_LEGEND_BG_COLOR);
+		roundedRectangle.setForegroundColor(Constants.DEPENDENCY_VISUALIZATION_LEGEND_BORDER_COLOR);
+		roundedRectangle.setBackgroundColor(Constants.DEPENDENCY_VISUALIZATION_LEGEND_BG_COLOR);
 		roundedRectangle.setLayoutManager(new FlowLayout());
 		roundedRectangle.setBorder(new MarginBorder(5));
 		
@@ -88,7 +89,7 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		gridLayout.horizontalSpacing = 2;
 		gridLayout.verticalSpacing = 5;
 		legendContents.setLayoutManager(gridLayout);
-		legendContents.setForegroundColor(VisualizationConstants.DEPENDENCY_VISUALIZATION_LEGEND_FORECOLOR);
+		legendContents.setForegroundColor(Constants.DEPENDENCY_VISUALIZATION_LEGEND_FORECOLOR);
 		
 		Figure selectorPart = new Figure();
 		selectorPart.setLayoutManager(new ToolbarLayout());
@@ -100,7 +101,7 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		legendContents.add(label);
 		
 		QuadraticConnection cascadingConnection = new QuadraticConnection(new Point(11, 44), new Point(29, 48), new Point(15, 46));
-		cascadingConnection.setForegroundColor(VisualizationConstants.CASCADING_DEPENDENCY_COLOR);
+		cascadingConnection.setForegroundColor(Constants.CASCADING_DEPENDENCY_COLOR);
 		cascadingConnection.setAntialias(SWT.ON);
 		cascadingConnection.setCursor(Cursors.HAND);
 		cascadingConnection.addMouseListener(new ItemClickedMouseListener(DependencyType.CASCADING));
@@ -113,7 +114,7 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		legendContents.add(cascadingLabel);
 		
 		QuadraticConnection specificityConnection = new QuadraticConnection(new Point(11, 64), new Point(29, 68), new Point(15, 66));
-		specificityConnection.setForegroundColor(VisualizationConstants.SPECIFICITY_DEPENDENCY_COLOR);
+		specificityConnection.setForegroundColor(Constants.SPECIFICITY_DEPENDENCY_COLOR);
 		specificityConnection.setAntialias(SWT.ON);
 		specificityConnection.setCursor(Cursors.HAND);
 		specificityConnection.addMouseListener(new ItemClickedMouseListener(DependencyType.SPECIFICITY));
@@ -125,7 +126,7 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		legendContents.add(specificityLabel);
 		
 		QuadraticConnection importanceConnection = new QuadraticConnection(new Point(11, 84), new Point(29, 88), new Point(15, 86));
-		importanceConnection.setForegroundColor(VisualizationConstants.IMPORTANCE_DEPENDENCY_COLOR);
+		importanceConnection.setForegroundColor(Constants.IMPORTANCE_DEPENDENCY_COLOR);
 		importanceConnection.setAntialias(SWT.ON);
 		importanceConnection.setCursor(Cursors.HAND);
 		importanceConnection.addMouseListener(new ItemClickedMouseListener(DependencyType.IMPORTANCE));
@@ -137,7 +138,7 @@ public class DependenciesLegendPane extends ScalableFreeformLayeredPane {
 		legendContents.add(importanceConnectionLabel);
 		
 		QuadraticConnection mediaQueryConnection = new QuadraticConnection(new Point(11, 104), new Point(29, 108), new Point(15, 106));
-		mediaQueryConnection.setForegroundColor(VisualizationConstants.MEDIA_QEURY_DEPENDENCY_COLOR);
+		mediaQueryConnection.setForegroundColor(Constants.MEDIA_QEURY_DEPENDENCY_COLOR);
 		mediaQueryConnection.setLineStyle(SWT.LINE_DASH);
 		mediaQueryConnection.setAntialias(SWT.ON);
 		legendContents.add(mediaQueryConnection);

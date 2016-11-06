@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.eclipse.draw2d.geometry.Point;
 
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.refactoring.dependencies.CSSValueOverridingDependency;
 
 public class SelectorFigureConnection extends QuadraticConnection {
@@ -59,21 +60,21 @@ public class SelectorFigureConnection extends QuadraticConnection {
 	}
 	
 	public void hover() {
-		setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_HOVERED);
-		setLineWidth(VisualizationConstants.DEPENDENCY_CONNECTIONS_WIDTH_HOVERED);
+		setAlpha(Constants.DEPENDENCY_CONNECTIONS_ALPHA_HOVERED);
+		setLineWidth(Constants.DEPENDENCY_CONNECTIONS_WIDTH_HOVERED);
 	}
 	
 	public void unhover() {
-		setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_INITIAL);
-		setLineWidth(VisualizationConstants.DEPENDENCY_CONNECTIONS_WIDTH_INITIAL);
+		setAlpha(Constants.DEPENDENCY_CONNECTIONS_ALPHA_INITIAL);
+		setLineWidth(Constants.DEPENDENCY_CONNECTIONS_WIDTH_INITIAL);
 	}
 	
 	@Override
 	public void setEnabled(boolean value) {
 		if (value) {
-			setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_INITIAL);
+			setAlpha(Constants.DEPENDENCY_CONNECTIONS_ALPHA_INITIAL);
 		} else {
-			setAlpha(VisualizationConstants.DEPENDENCY_CONNECTIONS_ALPHA_DESABLED);
+			setAlpha(Constants.DEPENDENCY_CONNECTIONS_ALPHA_DESABLED);
 		}
 		super.setEnabled(value);
 	}
@@ -114,13 +115,13 @@ public class SelectorFigureConnection extends QuadraticConnection {
 		dependencyType = type;
 		switch(type) {
 		case CASCADING:
-			setForegroundColor(VisualizationConstants.CASCADING_DEPENDENCY_COLOR);
+			setForegroundColor(Constants.CASCADING_DEPENDENCY_COLOR);
 			break;
 		case IMPORTANCE:
-			setForegroundColor(VisualizationConstants.IMPORTANCE_DEPENDENCY_COLOR);
+			setForegroundColor(Constants.IMPORTANCE_DEPENDENCY_COLOR);
 			break;
 		case SPECIFICITY:
-			setForegroundColor(VisualizationConstants.SPECIFICITY_DEPENDENCY_COLOR);
+			setForegroundColor(Constants.SPECIFICITY_DEPENDENCY_COLOR);
 			break;
 		default:
 			break;

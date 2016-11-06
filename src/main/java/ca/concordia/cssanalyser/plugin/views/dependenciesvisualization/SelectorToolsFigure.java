@@ -10,6 +10,7 @@ import org.eclipse.draw2d.MouseListener;
 
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
 import ca.concordia.cssanalyser.plugin.activator.Activator;
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
 
 public class SelectorToolsFigure extends Figure {
@@ -39,7 +40,7 @@ public class SelectorToolsFigure extends Figure {
 		FlowLayout layout = new FlowLayout(true);
 		setLayoutManager(layout);
 		Runnable showAffectedDomElements = () -> ((AffectedDOMNodesView)ViewsUtil.openView(AffectedDOMNodesView.ID)).showAffectedDOMNodesFor(selector);
-		add(new MyImageButton("Show affected DOM elements", VisualizationConstants.DOM_ICON, showAffectedDomElements));
+		add(new MyImageButton("Show affected DOM elements", Constants.DOM_ICON, showAffectedDomElements));
 	}
 	
 }

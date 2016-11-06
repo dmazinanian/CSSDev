@@ -52,6 +52,7 @@ import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
+import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
@@ -239,14 +240,14 @@ public class AffectedDOMNodesView extends ViewPart {
 	}
 	
 	private Image getDeclarationImage(Declaration declaration) {
-		ImageDescriptor descriptor = Activator.getImageDescriptor(VisualizationConstants.CSS_PROPERTY_ICON);
+		ImageDescriptor descriptor = Activator.getImageDescriptor(Constants.CSS_PROPERTY_ICON);
 		if (outgoingDependencies.containsKey(declaration) && outgoingDependencies.get(declaration).size() > 0) {
-			ImageDescriptor overlay = Activator.getImageDescriptor(VisualizationConstants.OVERRIDDEN_OVERLAY);
+			ImageDescriptor overlay = Activator.getImageDescriptor(Constants.OVERRIDDEN_OVERLAY);
 			Point overlayPosition = new Point(descriptor.getImageData().width - overlay.getImageData().width, 0);
 			descriptor = Activator.getOverlayedImagesDescriptor(descriptor, overlay, overlayPosition);
 		}
 		if (incomingDependencies.containsKey(declaration) && incomingDependencies.get(declaration).size() > 0) {
-			ImageDescriptor overlay = Activator.getImageDescriptor(VisualizationConstants.OVERRIDING_OVERLAY);
+			ImageDescriptor overlay = Activator.getImageDescriptor(Constants.OVERRIDING_OVERLAY);
 			Point overlayPosition = new Point(descriptor.getImageData().width - overlay.getImageData().width, 
 					descriptor.getImageData().height - overlay.getImageData().height);
 			descriptor = Activator.getOverlayedImagesDescriptor(descriptor, overlay, overlayPosition);

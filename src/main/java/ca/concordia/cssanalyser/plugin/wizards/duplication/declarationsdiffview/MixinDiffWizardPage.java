@@ -49,7 +49,6 @@ public class MixinDiffWizardPage extends UserInputWizardPage {
 	private Text mixinNameText;
 	private Table parametersTable;
 	
-	
 	public MixinDiffWizardPage(MixinDuplicationInfo duplicationInfo) {
 		super(LocalizedStrings.get(Keys.EXTRACT_MIXIN));
 		this.duplicationInfo = duplicationInfo;

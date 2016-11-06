@@ -15,7 +15,7 @@ import org.eclipse.swt.widgets.Composite;
 
 public abstract class ExtendedCheckBox extends Composite {
 	
-	interface ExtendedCheckboxSelectionListener {
+	public interface ExtendedCheckboxSelectionListener {
 		void selectionChanged(Object source, boolean selected);
 	}
 	

@@ -117,7 +117,11 @@ public class LocalizedStrings {
 		DUPLICATION_TYPES,
 		PROPERTY_CATEGORIES, 
 		NUMBER_OF_DECLARATIONS,
-		NUMBER_OF_SELECTORS
+		NUMBER_OF_SELECTORS,
+		FILTER_RESULTS,
+		NO_MEDIA_QUERY,
+		FILTER_BY, 
+		CLEAR_FILTERS
 	}
 
 	public static void setBundle(Locale locale) {

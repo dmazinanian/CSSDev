@@ -1,10 +1,10 @@
-package ca.concordia.cssanalyser.plugin.views.dependenciesvisualization;
+package ca.concordia.cssanalyser.plugin.utility;
 
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.widgets.Display;
 
-public interface VisualizationConstants {
+public interface Constants {
 	
 	public static final Color SELECTOR_COLOR = new Color(Display.getCurrent(), new RGB(0, 0, 0));
 	public static final Color SELECTOR_BG_COLOR = new Color(Display.getCurrent(), new RGB(235, 235, 235));
@@ -35,5 +35,7 @@ public interface VisualizationConstants {
 	public static final String CSS_SELECTOR_ICON = ICON_PATH + "/" + "tag_selector.gif";
 	public static final String OVERRIDDEN_OVERLAY = ICON_PATH + "/" + "overridden_overlay.png";
 	public static final String OVERRIDING_OVERLAY = ICON_PATH + "/" + "overriding_overlay.png";
+	public static final String FILTER_ICON = ICON_PATH + "/" + "filter.png";
+	public static final String CLEAR_FILTERS_ICON = ICON_PATH + "/" + "clear_filters.png";;
 	
 }
