@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
@@ -82,10 +83,24 @@ public class ViewsUtil {
 	
 	public static void showDetailedError(Throwable throwable) {
 		MultiStatus info = getStatusFromThrowable(throwable);
-		ErrorDialog.openError(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(), 
+		IWorkbenchWindow activeWorkbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+		if (activeWorkbenchWindow != null) {
+			ErrorDialog.openError(activeWorkbenchWindow.getShell(), 
 				LocalizedStrings.get(Keys.PARSE_ERROR_IN_FILE_TITLE), 
 				LocalizedStrings.get(Keys.PARSE_ERROR_IN_FILE_MESSAGE),
 				info);
+		} else {
+			Display.getDefault().asyncExec(new Runnable() {
+				@Override
+				public void run() {
+					ErrorDialog.openError(null, 
+							LocalizedStrings.get(Keys.PARSE_ERROR_IN_FILE_TITLE), 
+							LocalizedStrings.get(Keys.PARSE_ERROR_IN_FILE_MESSAGE),
+							info);
+				}
+			});
+		}
+		
 	}
 	
 	private static MultiStatus getStatusFromThrowable(Throwable throwable) {

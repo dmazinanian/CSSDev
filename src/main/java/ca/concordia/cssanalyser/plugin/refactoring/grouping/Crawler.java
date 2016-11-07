@@ -30,10 +30,11 @@ import com.crawljax.core.state.Eventable;
 import com.crawljax.core.state.StateVertex;
 
 import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
+import ca.concordia.cssanalyser.plugin.utility.FilesUtil;
 
 public class Crawler {
 
-	private static final String PHANTOM_JS_PATH = "C:\\Users\\Davood\\Desktop\\phantomjs-2.1.1-windows\\bin\\phantomjs.exe";
+	private static final String PHANTOM_JS_PATH = FilesUtil.getAbsolutePathForFile("phantomjs/phantomjs.exe");
 	
 	private final AnalysisOptions options;
 	private final List<Document> documents;
@@ -50,11 +51,15 @@ public class Crawler {
 	}
 
 	public void start() throws Exception {
-		CrawljaxConfiguration crawljaxBuilder = getCrawljaxBuilder();
-		if (crawljaxBuilder != null) {
+		CrawljaxConfiguration crawljaxBuilder;
+		try {
+			crawljaxBuilder = getCrawljaxBuilder();
 			crawljax = new CrawljaxRunner(crawljaxBuilder);
 			crawljax.call();
-			stopServer();
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			stopServer();	
 		}
 	}
 	
@@ -76,21 +81,22 @@ public class Crawler {
 	}
 
 	private CrawljaxConfiguration getCrawljaxBuilder() throws Exception {
-		String url = "";
+		URI uri = null;
 		if (options.getUrl().toLowerCase().startsWith("http://") ||
 				options.getUrl().toLowerCase().startsWith("https://")) {
-			url = options.getUrl();
+			uri = URI.create(options.getUrl());
 		} else {
-			server = new Server(8080);
+			server = new Server(1668);
 			ResourceHandler handler = new ResourceHandler();
-				File fileToCrawl =  new File(options.getUrl());
-				handler.setBaseResource(Resource.newResource(fileToCrawl.getParentFile().getAbsolutePath()));
-				server.setHandler(handler);
-				server.start();
-				int port = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
-				url = "http://localhost:" + port + "/" + fileToCrawl.getName(); //URI.create(url);
+			File fileToCrawl =  new File(options.getUrl());
+			handler.setBaseResource(Resource.newResource(fileToCrawl.getParentFile().getAbsolutePath()));
+			server.setHandler(handler);
+			server.start();
+			int port = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
+		    String nullFragment = null;
+		    uri = new URI("http", nullFragment, "localhost", port, "/" + fileToCrawl.getName(), nullFragment, nullFragment);
 		}
-		CrawljaxConfigurationBuilder builder = CrawljaxConfiguration.builderFor(URI.create(url).toASCIIString());
+		CrawljaxConfigurationBuilder builder = CrawljaxConfiguration.builderFor(uri);
 		//builder.addPlugin(new CrawlOverview());
 		builder.addPlugin(new OnNewStatePlugin() {
 			@Override

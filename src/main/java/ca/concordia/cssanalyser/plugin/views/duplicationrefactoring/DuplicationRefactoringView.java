@@ -1,5 +1,6 @@
 package ca.concordia.cssanalyser.plugin.views.duplicationrefactoring;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -982,6 +983,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		if (analysisOptions.shouldAnalyzeDoms()) {
 			Crawler crawler = new Crawler(analysisOptions);
 			documents.clear();
+			resetNumberOfDocumentsAttached();
 			Job job = Job.create(LocalizedStrings.get(Keys.CRAWLING_JOB), new ICoreRunnable() {
 				@Override
 				public void run(IProgressMonitor monitor) throws CoreException {
@@ -996,6 +998,13 @@ public class DuplicationRefactoringView extends ViewPart {
 						@Override
 						public void finishedCrawling(CrawlSession session) {
 							DuplicationRefactoringView.this.session = session;
+							try {
+								documents.add(0, session.getInitialState().getDocument());
+								resetNumberOfDocumentsAttached();
+							} catch (IOException e) {
+								ViewsUtil.showDetailedError(e);
+							}
+							
 						}
 					});
 					try {
