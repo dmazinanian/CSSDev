@@ -19,8 +19,8 @@ import com.crawljax.core.state.StateVertex;
 import com.crawljax.util.XPathHelper;
 
 import ca.concordia.cssanalyser.dom.DOMNodeWrapper;
-import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.utility.Constants;
+import ca.concordia.cssanalyser.plugin.utility.ImagesUtil;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
 import ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView;
 
@@ -33,13 +33,13 @@ public class AffectedDOMNodesTreeViewerLabelProvider extends StyledCellLabelProv
 			StateVertex stateVertex = (StateVertex) element;			
 			String documentPath = getDocumentPath(stateVertex);
 			cell.setText(documentPath);
-			cell.setImage(Activator.getImageDescriptor(Constants.HTML_FILE_ICON).createImage());
+			cell.setImage(ImagesUtil.getImageDescriptor(Constants.HTML_FILE_ICON).createImage());
 			cell.setStyleRanges(new StyleRange[] { getHighlightStylingRange(documentPath, " [") });
 		} else if (element instanceof DOMNodeWrapper) {
 			DOMNodeWrapper domNodeWrapper = (DOMNodeWrapper) element;
 			String domNodeWrapperString = getDOMnodeWrapperString(domNodeWrapper);
 			cell.setText(domNodeWrapperString);
-			cell.setImage(Activator.getImageDescriptor(Constants.DOM_ICON).createImage());
+			cell.setImage(ImagesUtil.getImageDescriptor(Constants.DOM_ICON).createImage());
 			cell.setStyleRanges(new StyleRange[] { getHighlightStylingRange(domNodeWrapperString, "> ") });
 		}
 	}

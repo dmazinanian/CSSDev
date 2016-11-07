@@ -9,8 +9,8 @@ import org.eclipse.draw2d.MouseEvent;
 import org.eclipse.draw2d.MouseListener;
 
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
-import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.utility.Constants;
+import ca.concordia.cssanalyser.plugin.utility.ImagesUtil;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
 
 public class SelectorToolsFigure extends Figure {
@@ -18,7 +18,7 @@ public class SelectorToolsFigure extends Figure {
 	private static class MyImageButton extends ImageFigure {
 		
 		public MyImageButton(String tooltipText, String icon, Runnable runnable) {
-			super(Activator.getImageDescriptor(icon).createImage());
+			super(ImagesUtil.getImageDescriptor(icon).createImage());
 			setToolTip(new Label(tooltipText));
 			setCursor(Cursors.HAND);
 			addMouseListener(new MouseListener() {

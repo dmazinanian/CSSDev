@@ -26,9 +26,9 @@ import org.eclipse.swt.widgets.TableItem;
 import ca.concordia.cssanalyser.csshelper.CSSPropertyCategoryHelper;
 import ca.concordia.cssanalyser.cssmodel.media.MediaQueryList;
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
-import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
+import ca.concordia.cssanalyser.plugin.utility.ImagesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.PreferencesUtil;
@@ -149,7 +149,7 @@ public class FilterOptionsWizardPage extends WizardPage {
 		mediaQuerysItem.setText(LocalizedStrings.get(Keys.FILTER_BY) + " " + LocalizedStrings.get(Keys.MEDIA_QUERY));
 		mediaQuerysItem.setHeight(Math.min(PARTS_MAX_HEIGHT, composite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y));
 		mediaQuerysItem.setControl(composite);
-		mediaQuerysItem.setImage(Activator.getImageDescriptor(Constants.FILTER_ICON).createImage());
+		mediaQuerysItem.setImage(ImagesUtil.getImageDescriptor(Constants.FILTER_ICON).createImage());
 	}
 	
 	private void createSelectorsPart(ExpandBar expandBar) {
@@ -185,7 +185,7 @@ public class FilterOptionsWizardPage extends WizardPage {
 		selectorItem.setText(LocalizedStrings.get(Keys.FILTER_BY) + " " + LocalizedStrings.get(Keys.SELECTOR));
 		selectorItem.setHeight(Math.min(PARTS_MAX_HEIGHT, selectorsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y));
 		selectorItem.setControl(selectorsComposite);
-		selectorItem.setImage(Activator.getImageDescriptor(Constants.FILTER_ICON).createImage());
+		selectorItem.setImage(ImagesUtil.getImageDescriptor(Constants.FILTER_ICON).createImage());
 	}
 
 	private void createPropertiesPart(ExpandBar expandBar) {
@@ -224,7 +224,7 @@ public class FilterOptionsWizardPage extends WizardPage {
 		propertyItemItem.setText(LocalizedStrings.get(Keys.FILTER_BY) + " " + LocalizedStrings.get(Keys.PROPERTY));
 		propertyItemItem.setHeight(Math.min(PARTS_MAX_HEIGHT, composite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y));
 		propertyItemItem.setControl(composite);
-		propertyItemItem.setImage(Activator.getImageDescriptor(Constants.FILTER_ICON).createImage());
+		propertyItemItem.setImage(ImagesUtil.getImageDescriptor(Constants.FILTER_ICON).createImage());
 	}
 
 	public FilterOptions getFilterOptions() {

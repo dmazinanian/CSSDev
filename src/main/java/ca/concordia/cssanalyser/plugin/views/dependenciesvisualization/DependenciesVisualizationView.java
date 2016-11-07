@@ -25,8 +25,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 
 import ca.concordia.cssanalyser.cssmodel.selectors.Selector;
-import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.utility.Constants;
+import ca.concordia.cssanalyser.plugin.utility.ImagesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.wizards.dependenciesvisualization.SelectorSearchWizard;
@@ -77,7 +77,7 @@ public class DependenciesVisualizationView extends ViewPart {
 		};
 		searchForSelectorAction.setText(LocalizedStrings.get(Keys.SELECTOR_SEARCH));
 		searchForSelectorAction.setToolTipText(LocalizedStrings.get(Keys.SELECTOR_SEARCH));
-		searchForSelectorAction.setImageDescriptor(Activator.getImageDescriptor(Constants.SEARCH_ICON));
+		searchForSelectorAction.setImageDescriptor(ImagesUtil.getImageDescriptor(Constants.SEARCH_ICON));
 		toolBarManager.add(searchForSelectorAction);
 		
 		resetZoomAction = new Action() {

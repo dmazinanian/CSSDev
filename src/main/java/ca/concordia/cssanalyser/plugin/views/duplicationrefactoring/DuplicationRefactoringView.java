@@ -93,7 +93,6 @@ import ca.concordia.cssanalyser.parser.CSSParser;
 import ca.concordia.cssanalyser.parser.CSSParserFactory;
 import ca.concordia.cssanalyser.parser.CSSParserFactory.CSSParserType;
 import ca.concordia.cssanalyser.parser.ParseException;
-import ca.concordia.cssanalyser.plugin.activator.Activator;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotation;
 import ca.concordia.cssanalyser.plugin.annotations.CSSAnnotationType;
 import ca.concordia.cssanalyser.plugin.refactoring.DuplicationRefactoring;
@@ -107,6 +106,7 @@ import ca.concordia.cssanalyser.plugin.utility.AnalysisResultsStorage;
 import ca.concordia.cssanalyser.plugin.utility.AnnotationsUtil;
 import ca.concordia.cssanalyser.plugin.utility.Constants;
 import ca.concordia.cssanalyser.plugin.utility.DuplicationInfo;
+import ca.concordia.cssanalyser.plugin.utility.ImagesUtil;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings;
 import ca.concordia.cssanalyser.plugin.utility.LocalizedStrings.Keys;
 import ca.concordia.cssanalyser.plugin.utility.ViewsUtil;
@@ -493,7 +493,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		};
 		filterOpportunitiesAction.setText(LocalizedStrings.get(Keys.FILTER_RESULTS));
 		filterOpportunitiesAction.setToolTipText(LocalizedStrings.get(Keys.FILTER_RESULTS));
-		filterOpportunitiesAction.setImageDescriptor(Activator.getImageDescriptor(Constants.FILTER_ICON));
+		filterOpportunitiesAction.setImageDescriptor(ImagesUtil.getImageDescriptor(Constants.FILTER_ICON));
 		filterOpportunitiesAction.setEnabled(false);
 		
 		clearFiltersAction = new Action() {
@@ -504,7 +504,7 @@ public class DuplicationRefactoringView extends ViewPart {
 		};
 		clearFiltersAction.setText(LocalizedStrings.get(Keys.CLEAR_FILTERS));
 		clearFiltersAction.setToolTipText(LocalizedStrings.get(Keys.CLEAR_FILTERS));
-		clearFiltersAction.setImageDescriptor(Activator.getImageDescriptor(Constants.CLEAR_FILTERS_ICON));
+		clearFiltersAction.setImageDescriptor(ImagesUtil.getImageDescriptor(Constants.CLEAR_FILTERS_ICON));
 		clearFiltersAction.setEnabled(false);
 		
 		showSettingsAction = new Action() {
