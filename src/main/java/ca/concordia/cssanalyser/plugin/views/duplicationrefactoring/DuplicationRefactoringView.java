@@ -143,6 +143,7 @@ public class DuplicationRefactoringView extends ViewPart {
 	private List<CSSAnnotation> currentAnnotations = new ArrayList<>();
 	private Map<IFile, AnalysisResultsStorage> fileToResultsMap = new HashMap<>();
 	private Label numberOfOpportunitiesLabel;
+	private Label numberOfDocumentsAttached;
 	private AnalysisOptions analysisOptions = new AnalysisOptions();
 	private FilterOptions filterOptions = new FilterOptions();
 	private List<Document> documents = new ArrayList<>();
@@ -379,8 +380,8 @@ public class DuplicationRefactoringView extends ViewPart {
 	
 	private void createBottomBar(Composite parent) {
 		Composite bottomBar = new Composite(parent, SWT.NONE);
-		GridLayout bottomBarLayout = new GridLayout(3, false);
-		bottomBarLayout.horizontalSpacing = 20;
+		GridLayout bottomBarLayout = new GridLayout(4, true);
+		bottomBarLayout.horizontalSpacing = 5;
 		bottomBar.setLayout(bottomBarLayout);
 		bottomBar.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 		
@@ -404,6 +405,9 @@ public class DuplicationRefactoringView extends ViewPart {
 		
 		numberOfOpportunitiesLabel = new Label(bottomBar, SWT.NONE);
 		numberOfOpportunitiesLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		
+		numberOfDocumentsAttached = new Label(bottomBar, SWT.NONE);
+		numberOfDocumentsAttached.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 	}
 
 	private void contributeToActionBars() {
@@ -600,6 +604,19 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 	
+	private void initializeFilterOptions(List<DuplicationInfo> duplicationInfoList) {
+		filterOptions = new FilterOptions();
+		for (MediaQueryList mediaQueryList : FilterUtil.getUniqueMediaQueryLists(duplicationInfoList)) {
+			filterOptions.includeMediaQuery(mediaQueryList);
+		}
+		for (Selector selector : FilterUtil.getUniqueSelectors(duplicationInfoList)) {
+			filterOptions.includeSelector(selector);
+		}
+		for (String property : FilterUtil.getUniqueProperties(duplicationInfoList)) {
+			filterOptions.includeProperty(property);
+		}
+	}
+	
 	protected void showFiltersWizard() {
 		List<DuplicationInfo> duplicationInfoList = ((DuplicationViewContentProvider)viewer.getContentProvider()).duplicationInfoList;
 		if (duplicationInfoList != null) {
@@ -610,7 +627,7 @@ public class DuplicationRefactoringView extends ViewPart {
 				applyFiltering();
 			}
 		}
-	}
+	}	
 
 	private void applyFiltering() {
 		clearFiltersAction.setEnabled(true);
@@ -644,6 +661,7 @@ public class DuplicationRefactoringView extends ViewPart {
 			}
 		});
 		viewer.refresh();
+		resetNumberOfOpportunities();
 	}
 	
 	private void clearFilters() {
@@ -682,28 +700,23 @@ public class DuplicationRefactoringView extends ViewPart {
 		if (duplicationInfo != null && !duplicationInfo.isEmpty()) {
 			clearResultsAction.setEnabled(true);
 			filterOpportunitiesAction.setEnabled(true);
-			numberOfOpportunitiesLabel.setText(String.format(LocalizedStrings.get(Keys.NUMBER_OF_OPPORTUNITIES), String.valueOf(duplicationInfo.size())));
 			initializeFilterOptions(duplicationInfo);
 		} else {
 			clearResultsAction.setEnabled(false);
 			filterOpportunitiesAction.setEnabled(false);
-			numberOfOpportunitiesLabel.setText("");
 			initializeFilterOptions(new ArrayList<>());
 		}
-		numberOfOpportunitiesLabel.getParent().layout(true, true);
+		resetNumberOfOpportunities();
 	}
 	
-	private void initializeFilterOptions(List<DuplicationInfo> duplicationInfoList) {
-		filterOptions = new FilterOptions();
-		for (MediaQueryList mediaQueryList : FilterUtil.getUniqueMediaQueryLists(duplicationInfoList)) {
-			filterOptions.includeMediaQuery(mediaQueryList);
+	private void resetNumberOfOpportunities() {
+		int i = viewer.getTable().getItemCount();
+		if (i > 0) {
+			numberOfOpportunitiesLabel.setText(String.format(LocalizedStrings.get(Keys.NUMBER_OF_OPPORTUNITIES), String.valueOf(i)));
+		} else {
+			numberOfOpportunitiesLabel.setText("");
 		}
-		for (Selector selector : FilterUtil.getUniqueSelectors(duplicationInfoList)) {
-			filterOptions.includeSelector(selector);
-		}
-		for (String property : FilterUtil.getUniqueProperties(duplicationInfoList)) {
-			filterOptions.includeProperty(property);
-		}
+		numberOfOpportunitiesLabel.getParent().layout(true, true);
 	}
 
 	private void clearAnnotations(StructuredTextEditor ste) {
@@ -977,14 +990,19 @@ public class DuplicationRefactoringView extends ViewPart {
 						@Override
 						public void newDOMVisited(Document document) {
 							documents.add(document);
-							//newDOMFound();
+							resetNumberOfDocumentsAttached();
 						}
+						
 						@Override
 						public void finishedCrawling(CrawlSession session) {
 							DuplicationRefactoringView.this.session = session;
 						}
 					});
-					crawler.start();
+					try {
+						crawler.start();
+					} catch (Exception e) {
+						ViewsUtil.showDetailedError(e);
+					}
 					showDependenciesAction.setEnabled(documents.size() > 0);
 					monitor.done();
 				}
@@ -996,6 +1014,20 @@ public class DuplicationRefactoringView extends ViewPart {
 		}
 	}
 	
+	private void resetNumberOfDocumentsAttached() {
+		Display.getDefault().asyncExec(new Runnable() {
+			@Override
+			public void run() {
+				if (documents.size() == 0) {
+					numberOfDocumentsAttached.setText(LocalizedStrings.get(Keys.NO_DOM_STATES_ATTACHED));
+				} else {
+					numberOfDocumentsAttached.setText(String.format(LocalizedStrings.get(Keys.DOM_STATES_ATTACHED), documents.size()));	
+				}
+				numberOfDocumentsAttached.getParent().layout(true, true);									
+			}
+		});
+	}
+
 	private void showDependencies() {
 		if (selectedFile != null && documents.size() > 0) {
 			IViewPart overridingDependenciesView = ViewsUtil.openView(DependenciesVisualizationView.ID);

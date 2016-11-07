@@ -2,6 +2,7 @@ package ca.concordia.cssanalyser.plugin.refactoring.grouping;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +34,7 @@ import ca.concordia.cssanalyser.plugin.utility.AnalysisOptions;
 public class Crawler {
 
 	private static final String PHANTOM_JS_PATH = "C:\\Users\\Davood\\Desktop\\phantomjs-2.1.1-windows\\bin\\phantomjs.exe";
-
+	
 	private final AnalysisOptions options;
 	private final List<Document> documents;
 	private final List<CrawlerObserver> observers;
@@ -48,11 +49,13 @@ public class Crawler {
 		this.observers = new ArrayList<>();
 	}
 
-	public void start() {
-		crawljax = new CrawljaxRunner(getCrawljaxBuilder());
-		crawljax.call();
-		stopServer();
-		
+	public void start() throws Exception {
+		CrawljaxConfiguration crawljaxBuilder = getCrawljaxBuilder();
+		if (crawljaxBuilder != null) {
+			crawljax = new CrawljaxRunner(crawljaxBuilder);
+			crawljax.call();
+			stopServer();
+		}
 	}
 	
 	public void stop() {
@@ -67,13 +70,12 @@ public class Crawler {
 			try {
 				server.stop();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
 
-	private CrawljaxConfiguration getCrawljaxBuilder() {
+	private CrawljaxConfiguration getCrawljaxBuilder() throws Exception {
 		String url = "";
 		if (options.getUrl().toLowerCase().startsWith("http://") ||
 				options.getUrl().toLowerCase().startsWith("https://")) {
@@ -81,19 +83,14 @@ public class Crawler {
 		} else {
 			server = new Server(8080);
 			ResourceHandler handler = new ResourceHandler();
-			try {
 				File fileToCrawl =  new File(options.getUrl());
 				handler.setBaseResource(Resource.newResource(fileToCrawl.getParentFile().getAbsolutePath()));
 				server.setHandler(handler);
 				server.start();
 				int port = ((ServerConnector)server.getConnectors()[0]).getLocalPort();
 				url = "http://localhost:" + port + "/" + fileToCrawl.getName(); //URI.create(url);
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 		}
-		CrawljaxConfigurationBuilder builder = CrawljaxConfiguration.builderFor(url);
+		CrawljaxConfigurationBuilder builder = CrawljaxConfiguration.builderFor(URI.create(url).toASCIIString());
 		//builder.addPlugin(new CrawlOverview());
 		builder.addPlugin(new OnNewStatePlugin() {
 			@Override
@@ -158,8 +155,9 @@ public class Crawler {
 		crawlRules.waitAfterEvent(options.getWaitTimeAfterEvent(), TimeUnit.MILLISECONDS);
 		crawlRules.clickOnce(options.shouldClickOnce());
 		crawlRules.crawlHiddenAnchors(options.shouldCrawlHiddenAnchorsButton());
-		
+
 		return builder.build();
+		
 	}
 	
 	private void notifyDomVisitedObservers(Document document) {

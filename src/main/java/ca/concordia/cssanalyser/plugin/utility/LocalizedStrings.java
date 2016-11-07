@@ -121,7 +121,9 @@ public class LocalizedStrings {
 		FILTER_RESULTS,
 		NO_MEDIA_QUERY,
 		FILTER_BY, 
-		CLEAR_FILTERS
+		CLEAR_FILTERS,
+		NO_DOM_STATES_ATTACHED, 
+		DOM_STATES_ATTACHED
 	}
 
 	public static void setBundle(Locale locale) {
