@@ -2,9 +2,11 @@ package ca.concordia.cssanalyser.plugin.refactoring.grouping;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -88,46 +90,46 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		Set<Selector> emptySelectors = itemSet.getEmptySelectorsAfterRefactoring();
 		Set<Declaration> declarationsToRemove = itemSet.getDeclarationsToBeRemoved();
 		GroupingSelector newGrouping = itemSet.getGroupingSelector();
-		String newGroupingSelectorText = getSelectorText(newGrouping, System.lineSeparator());
+		String newGroupingSelectorText = generateSelectorText(newGrouping, System.lineSeparator());
 		
 		TextFileChange result = new TextFileChange(duplicationInfo.getSourceIFile().getName(), duplicationInfo.getSourceIFile());
 	    // Add the root
 	    MultiTextEdit fileChangeRootEdit = new MultiTextEdit();
-	    result.setEdit(fileChangeRootEdit);    
+	    result.setEdit(fileChangeRootEdit); 
 	    String fileContents;
 		try {
 			fileContents = IOHelper.readFileToString(duplicationInfo.getSourceIFile().getLocation().toOSString());
-		    
-		    OffsetLengthList offsetsAndLengths = new OffsetLengthList();
-		    
-		    // First, remove empty selectors
-		    for (Selector selector : emptySelectors) {
-		    	LocationInfo locationInfo = selector.getLocationInfo();
-	    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
-	    		offsetsAndLengths.add(offsetLength);
-		    }
-		    
-		    // Then remove other declarations
-		    for (Declaration declarationToRemove : declarationsToRemove) {
-		    	if (!emptySelectors.contains(declarationToRemove.getSelector())) {
-		    		LocationInfo locationInfo = declarationToRemove.getLocationInfo();
-		    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
-		    		offsetsAndLengths.add(offsetLength);
-		    	}
-		    }
-		    
-		    List<DeleteEdit> deleteEdits = new ArrayList<>();
-		    for (OffsetLength offsetAndLength : offsetsAndLengths.getNonOverlappingOffsetsAndLengths()) {
-		    	DeleteEdit deleteEdit = new DeleteEdit(offsetAndLength.getOffset(), offsetAndLength.getLength());
-		    	deleteEdits.add(deleteEdit);
-		    }
-		    DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
-		    fileChangeRootEdit.addChildren(deleteEditsArray);
-		    result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
-		    
+			
 		    // Add grouping selector
 		    if (this.dependenciesToHold == null) {
-		    	// Just add it to the end
+			    OffsetLengthList offsetsAndLengths = new OffsetLengthList();
+			    
+			    // First, remove empty selectors
+			    for (Selector selector : emptySelectors) {
+			    	LocationInfo locationInfo = selector.getLocationInfo();
+		    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
+		    		offsetsAndLengths.add(offsetLength);
+			    }
+			    
+			    // Then remove other declarations
+			    for (Declaration declarationToRemove : declarationsToRemove) {
+			    	if (!emptySelectors.contains(declarationToRemove.getSelector())) {
+			    		LocationInfo locationInfo = declarationToRemove.getLocationInfo();
+			    		OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
+			    		offsetsAndLengths.add(offsetLength);
+			    	}
+			    }
+			    
+			    List<DeleteEdit> deleteEdits = new ArrayList<>();
+			    for (OffsetLength offsetAndLength : offsetsAndLengths.getNonOverlappingOffsetsAndLengths()) {
+			    	DeleteEdit deleteEdit = new DeleteEdit(offsetAndLength.getOffset(), offsetAndLength.getLength());
+			    	deleteEdits.add(deleteEdit);
+			    }
+			    DeleteEdit[] deleteEditsArray = deleteEdits.toArray(new DeleteEdit[]{});
+			    fileChangeRootEdit.addChildren(deleteEditsArray);
+			    result.addTextEditGroup(new TextEditGroup(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS), deleteEditsArray));
+		    	
+		    	// Just add the grouping selector to the end
 		    	InsertEdit insertNewGroupingEdit = new InsertEdit(fileContents.length(), System.lineSeparator() + System.lineSeparator() + newGroupingSelectorText);
 		    	fileChangeRootEdit.addChild(insertNewGroupingEdit);
 		    	result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.ADD_GROUPING_SELECTOR), newGrouping), insertNewGroupingEdit));
@@ -143,8 +145,18 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    		}
 		    		boolean groupingSelectorAdded = false;
 		    		for (int i = 0; i < newOrdering.size(); i++) {
-		    			if (newOrdering.get(i) != i + 1) {
-		    				// There is a change, we should re-order something
+		    			if (newOrdering.get(i) == i + 1) {
+		    				Selector selectorToRemain = selectorsList.get(i);
+    						// If there is a declaration in this selector that should be removed, 
+		    				// only add the delete edit for that
+		    				for (Declaration declarationToRemoveInThisSelector : getDeclarationsToRemoveInSelector(selectorToRemain)) {
+		    					LocationInfo locationInfo = declarationToRemoveInThisSelector.getLocationInfo();
+		    					OffsetLength offsetLength = RefactoringUtil.expandAreaToRemove(fileContents, locationInfo);
+		    					DeleteEdit deleteEdit = new DeleteEdit(offsetLength.getOffset(), offsetLength.getLength());
+		    					fileChangeRootEdit.addChild(deleteEdit);
+		    					result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.REMOVE_DUPLICATED_DECLARATIONS)), deleteEdit));
+		    				}
+		    			} else { // There is a change, we should re-order something
 		    				if (newOrdering.get(i) == selectorsList.size()) { 
 		    					/*
 		    					 * The last selector is the grouping one,
@@ -173,13 +185,12 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		    						} else {
 		    							positionToInsert = selectorsList.get(i).getLocationInfo().getOffset();
 		    						}
-		    						String selectorText = getSelectorText(selectorToReorder, System.lineSeparator());
+		    						String selectorText = getSelectorOriginalTextWithRemovedDeclarationsExcluded(fileContents, selectorToReorder);
 		    						if (positionToInsert > 0) {
 		    							selectorText = System.lineSeparator() + System.lineSeparator() + selectorText;
 		    						}
 		    						InsertEdit insertEdit = new InsertEdit(positionToInsert, selectorText);
 		    						fileChangeRootEdit.addChild(insertEdit);
-
 		    						result.addTextEditGroup(new TextEditGroup(String.format(LocalizedStrings.get(Keys.REORDER_SELECTORS), selectorToReorder), 
 		    								new TextEdit[] { deleteEdit, insertEdit }));
 		    					}
@@ -210,7 +221,31 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 	    return change;
 	}
 
-	private String getSelectorText(Selector selector, String newLineChar) {
+	/**
+	 * This returns declarations that should be removed in one selector
+	 * in the order that they appear
+	 * @param selector
+	 * @return
+	 */
+	private Set<Declaration> getDeclarationsToRemoveInSelector(Selector selector) {
+		Set<Declaration> toReturn = new TreeSet<>(new Comparator<Declaration>() {
+			@Override
+			public int compare(Declaration o1, Declaration o2) {
+				if (o1 == o2 || o1.equals(o2)) {
+					return 0;
+				}
+				return Integer.compare(o1.getLocationInfo().getOffset(), o2.getLocationInfo().getOffset());
+			}
+		});
+		for (Declaration declarationToRemove :  duplicationInfo.getItemSet().getDeclarationsToBeRemoved()) {
+			if (declarationToRemove.getSelector().equals(selector)) {
+				toReturn.add(declarationToRemove);
+			}
+		}
+		return toReturn;
+	}
+
+	private String generateSelectorText(Selector selector, String newLineChar) {
 		StringBuilder selectorString = new StringBuilder();
 		selectorString.append(selector.toString()).append(" {").append(newLineChar);		
 		for (Iterator<Declaration> iterator = selector.getDeclarations().iterator(); iterator.hasNext();) {
@@ -224,6 +259,32 @@ public class GroupingRefactoring extends DuplicationRefactoring {
 		}
 		selectorString.append("}");
 		return selectorString.toString();
+	}
+
+	private String getSelectorOriginalTextWithRemovedDeclarationsExcluded(String fileContents, Selector selector) {
+		Set<Declaration> declarationsToRemoveInSelector = getDeclarationsToRemoveInSelector(selector);
+		LocationInfo selectorLocationInfo = selector.getLocationInfo();
+		if (declarationsToRemoveInSelector.size() > 0) {
+			StringBuilder selectorStringBuilder = new StringBuilder();
+			for (int i = selectorLocationInfo.getOffset(); i < selectorLocationInfo.getOffset() + selectorLocationInfo.getLength(); i++) {
+				boolean shouldSkipThisChar = false;
+				for (Declaration declaration : declarationsToRemoveInSelector) {
+					OffsetLength expandedArea = RefactoringUtil.expandAreaToRemove(fileContents,
+							declaration.getLocationInfo());
+					if (i >= expandedArea.getOffset() && i <= expandedArea.getOffset() + expandedArea.getLength() - 1) {
+						i += expandedArea.getLength() - 1;
+						shouldSkipThisChar = true;
+						break;
+					}
+				}
+				if (!shouldSkipThisChar) {
+					selectorStringBuilder.append(fileContents.charAt(i));
+				}
+			}
+			return selectorStringBuilder.toString();
+		} else {
+			return fileContents.substring(selectorLocationInfo.getOffset(), selectorLocationInfo.getOffset() + selectorLocationInfo.getLength());
+		}
 	}
 
 	@Override
