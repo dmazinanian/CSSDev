@@ -5,29 +5,29 @@
    <extension
          point="org.eclipse.ui.views">
       <category
-            name="css-analyser"
-            id="css-analyser">
+            name="CSSDev"
+            id="CSSDev">
       </category>
       <view
             name="Duplicated Declarations"
             icon="icons/icon.png"
-            category="css-analyser"
-            class="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView"
-            id="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
+            category="CSSDev"
+            class="ca.concordia.cssdev.plugin.views.duplicationrefactoring.DuplicationRefactoringView"
+            id="ca.concordia.cssdev.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
       </view>
       <view
             name="Overriding Dependencies"
             icon="icons/icon.png"
-            category="css-analyser"
-            class="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView"
-            id="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.DependenciesVisualizationView">
+            category="CSSDev"
+            class="ca.concordia.cssdev.plugin.views.dependenciesvisualization.DependenciesVisualizationView"
+            id="ca.concordia.cssdev.plugin.views.dependenciesvisualization.DependenciesVisualizationView">
       </view>
       <view
             name="Affected DOM nodes"
             icon="icons/html_tag_obj.gif"
-            category="css-analyser"
-            class="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.AffectedDOMNodesView"
-            id="ca.concordia.cssanalyser.plugin.views.dependenciesvisualization.AffectedDOMNodesView">
+            category="CSSDev"
+            class="ca.concordia.cssdev.plugin.views.dependenciesvisualization.AffectedDOMNodesView"
+            id="ca.concordia.cssdev.plugin.views.dependenciesvisualization.AffectedDOMNodesView">
       </view>
    </extension>
    <extension
@@ -38,14 +38,14 @@
                ratio="0.5"
                relative="org.eclipse.ui.views.ProblemView"
                relationship="right"
-               id="ca.concordia.cssanalyser.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
+               id="ca.concordia.cssdev.plugin.views.duplicationrefactoring.DuplicationRefactoringView">
          </view>
       </perspectiveExtension>
    </extension>
    <extension
          point="org.eclipse.ui.editors.markerAnnotationSpecification">
       <specification
-            annotationType="ca.concordia.cssanalyser.plugin.annotations.DuplicatedDeclarations"
+            annotationType="ca.concordia.cssdev.plugin.annotations.DuplicatedDeclarations"
             colorPreferenceKey="duplicatedDeclarations_color"
             colorPreferenceValue="100,255,190"
             contributesToHeader="false"
@@ -70,7 +70,7 @@
             verticalRulerPreferenceValue="false">
       </specification>
 	  <specification
-            annotationType="ca.concordia.cssanalyser.plugin.annotations.StyleRule"
+            annotationType="ca.concordia.cssdev.plugin.annotations.StyleRule"
             colorPreferenceKey="styleRule_color"
             colorPreferenceValue="255,170,220"
             contributesToHeader="false"
@@ -95,7 +95,7 @@
             verticalRulerPreferenceValue="false">
       </specification>
 	  <specification
-            annotationType="ca.concordia.cssanalyser.plugin.annotations.Declaration"
+            annotationType="ca.concordia.cssdev.plugin.annotations.Declaration"
             colorPreferenceKey="declaration_color"
             colorPreferenceValue="220,170,255"
             contributesToHeader="true"
@@ -120,7 +120,7 @@
             verticalRulerPreferenceValue="false">
       </specification>
  	  <specification
-            annotationType="ca.concordia.cssanalyser.plugin.annotations.DomNode"
+            annotationType="ca.concordia.cssdev.plugin.annotations.DomNode"
             colorPreferenceKey="dom_node_color"
             colorPreferenceValue="221,221,255"
             contributesToHeader="true"
@@ -160,7 +160,8 @@
    <extension point="org.eclipse.ui.menus">
       <menuContribution locationURI="popup:org.eclipse.ui.popup.any">
          <menu
-               label="css-analyser">
+               label="CSSDev"
+               icon="icons/icon.png">
             <command
                   commandId="ca.concordia.cssanalyser.plugin.commands.OpenDuplicatedDeclarationsView"
                   id="OpenDuplicatedDeclarationsView"
@@ -190,7 +191,7 @@
    <extension
          point="org.eclipse.ui.commands">
       <command
-            defaultHandler="ca.concordia.cssanalyser.plugin.commandhandlers.PopupMenuHandler"
+            defaultHandler="ca.concordia.cssdev.plugin.commandhandlers.PopupMenuHandler"
             id="ca.concordia.cssanalyser.plugin.commands.OpenDuplicatedDeclarationsView"
             name="DuplicaionsCommandName">
       </command>

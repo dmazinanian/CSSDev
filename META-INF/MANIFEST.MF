@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: css-analyser-eclipse-plugin
-Bundle-SymbolicName: css-analyser-eclipse-plugin;singleton:=true
+Bundle-Name: CSSDev
+Bundle-SymbolicName: ca.concordia.cssdev.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: ca.concordia.cssanalyser.plugin.activator.Activator
+Bundle-Activator: ca.concordia.cssdev.plugin.activator.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  org.eclipse.core.resources,
